@@ -1,4 +1,302 @@
-<html>
-<head><title>아이디어 웹 제작하기 </title></head>
-<body> 주식 성공</body>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>주식 성공 | 투자 인사이트</title>
+  <meta name="description" content="투자 원칙, 시장 개요, 실전 팁을 한 곳에서 확인하는 주식 투자 정보 사이트" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="#top" class="brand">
+        <span class="brand-mark">주</span>
+        <span>주식 성공</span>
+      </a>
+      <button class="nav-toggle" aria-label="메뉴 열기" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="#principles">투자 원칙</a></li>
+        <li><a href="#market">시장 개요</a></li>
+        <li><a href="#news-predict">뉴스 예측</a></li>
+        <li><a href="#simulator">시뮬레이터</a></li>
+        <li><a href="#tips">투자 팁</a></li>
+        <li><a href="#subscribe">뉴스레터</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container">
+        <span class="eyebrow">투자 인사이트</span>
+        <h1>흔들리지 않는 원칙으로<br />꾸준한 투자 성공을 만듭니다</h1>
+        <p>
+          단기 시세에 흔들리지 않고, 검증된 투자 원칙과 시장 이해를 바탕으로
+          장기적인 자산 성장을 추구하는 투자자를 위한 공간입니다.
+        </p>
+        <div class="hero-actions">
+          <a href="#principles" class="btn btn-primary">투자 원칙 보기</a>
+          <a href="#tips" class="btn btn-secondary">실전 팁 보기</a>
+        </div>
+        <p class="disclaimer-note">
+          본 콘텐츠는 정보 제공 목적이며 투자 권유가 아닙니다. 투자 결정과 책임은 본인에게 있습니다.
+        </p>
+      </div>
+    </section>
+
+    <section id="principles">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Core Principles</span>
+          <h2>투자 성공을 위한 핵심 원칙</h2>
+          <p>화려한 기법보다 기본에 충실한 원칙이 장기 수익률을 결정합니다.</p>
+        </div>
+        <div class="grid-3">
+          <div class="card reveal">
+            <div class="card-icon">1</div>
+            <h3>분산 투자</h3>
+            <p>하나의 종목이나 자산군에 집중하지 않고 리스크를 여러 곳에 나누어 관리합니다.</p>
+          </div>
+          <div class="card reveal">
+            <div class="card-icon">2</div>
+            <h3>장기적 관점</h3>
+            <p>단기 변동성보다 기업의 본질적 가치와 성장 가능성에 초점을 맞춥니다.</p>
+          </div>
+          <div class="card reveal">
+            <div class="card-icon">3</div>
+            <h3>원칙 있는 매매</h3>
+            <p>감정이 아닌 정해진 기준에 따라 매수와 매도를 결정하고 기록합니다.</p>
+          </div>
+          <div class="card reveal">
+            <div class="card-icon">4</div>
+            <h3>리스크 관리</h3>
+            <p>손실 허용 범위를 사전에 정하고, 레버리지와 무리한 베팅을 지양합니다.</p>
+          </div>
+          <div class="card reveal">
+            <div class="card-icon">5</div>
+            <h3>꾸준한 학습</h3>
+            <p>시장과 산업의 변화를 지속적으로 공부하며 투자 판단의 근거를 넓힙니다.</p>
+          </div>
+          <div class="card reveal">
+            <div class="card-icon">6</div>
+            <h3>비용 관리</h3>
+            <p>수수료, 세금 등 눈에 보이지 않는 비용이 장기 수익률에 미치는 영향을 고려합니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="market" class="section-alt">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Market Overview</span>
+          <h2>주요 지수 한눈에 보기</h2>
+          <p>국내외 대표 지수 동향을 참고용으로 확인해보세요.</p>
+        </div>
+        <div class="grid-4">
+          <div class="market-card reveal">
+            <div class="market-name">코스피 (KOSPI)</div>
+            <div class="market-value">2,650.32</div>
+            <div class="market-change up">▲ 12.45 (0.47%)</div>
+          </div>
+          <div class="market-card reveal">
+            <div class="market-name">코스닥 (KOSDAQ)</div>
+            <div class="market-value">865.10</div>
+            <div class="market-change down">▼ 4.21 (0.48%)</div>
+          </div>
+          <div class="market-card reveal">
+            <div class="market-name">다우존스 (DJIA)</div>
+            <div class="market-value">39,120.55</div>
+            <div class="market-change up">▲ 88.30 (0.23%)</div>
+          </div>
+          <div class="market-card reveal">
+            <div class="market-name">나스닥 (NASDAQ)</div>
+            <div class="market-value">16,405.80</div>
+            <div class="market-change up">▲ 145.12 (0.89%)</div>
+          </div>
+        </div>
+        <p class="market-note">※ 위 수치는 예시 데이터이며 실시간 시세가 아닙니다.</p>
+      </div>
+    </section>
+
+    <section id="news-predict" class="section-alt">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">News-Based Signal</span>
+          <h2>뉴스 헤드라인으로 보는 시장 심리</h2>
+          <p>키워드 기반 간이 분석 도구로, 최근 뉴스에 담긴 긍정·부정 신호를 정량화해서 보여줍니다.</p>
+        </div>
+
+        <div class="news-tool reveal">
+          <div class="news-input-row">
+            <input type="text" id="newsKeyword" value="코스피" placeholder="검색 키워드 (예: 코스피, 반도체, 삼성전자)" />
+            <button type="button" id="fetchNewsBtn" class="btn btn-secondary">실시간 뉴스 가져오기</button>
+          </div>
+          <p class="field-hint">
+            버튼을 누르면 GDELT 공개 뉴스 데이터베이스에서 최근 헤드라인을 가져와 아래 입력창에 채워줍니다.
+            가져오기에 실패하면 헤드라인을 직접 입력해도 분석할 수 있습니다.
+          </p>
+          <textarea id="newsHeadlines" rows="6" placeholder="분석할 뉴스 헤드라인을 한 줄에 하나씩 입력하세요.
+예) 반도체 수출 호조에 코스피 사상 최고치 경신
+예) 미국發 금리 인상 우려에 코스피 급락"></textarea>
+          <div class="news-actions">
+            <button type="button" id="analyzeNewsBtn" class="btn btn-primary">헤드라인 분석하기</button>
+            <span id="newsStatus" class="field-hint" aria-live="polite"></span>
+          </div>
+
+          <div id="newsResult" class="news-result" hidden>
+            <div class="sentiment-gauge">
+              <div class="sentiment-badge" id="sentimentBadge">중립</div>
+              <div class="gauge-bar">
+                <div class="gauge-marker" id="gaugeMarker"></div>
+              </div>
+              <div class="gauge-labels">
+                <span>약세</span><span>중립</span><span>강세</span>
+              </div>
+            </div>
+            <div class="news-stats grid-3">
+              <div class="stat-box"><span class="stat-num" id="statTotal">0</span><span class="stat-label">분석된 헤드라인</span></div>
+              <div class="stat-box"><span class="stat-num" id="statPos">0</span><span class="stat-label">긍정 키워드 매치</span></div>
+              <div class="stat-box"><span class="stat-num" id="statNeg">0</span><span class="stat-label">부정 키워드 매치</span></div>
+            </div>
+            <ul class="headline-list" id="headlineList"></ul>
+          </div>
+
+          <p class="disclaimer-box">
+            ⚠ 이 분석은 사전에 정의된 키워드 매칭에 기반한 간이 도구이며, 실제 인공지능 예측이나 투자 자문이 아닙니다.
+            시장은 다양한 변수에 영향을 받으므로 참고 자료로만 활용하세요.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="simulator">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Simulation</span>
+          <h2>투자 시뮬레이터</h2>
+          <p>초기 투자금과 예상 수익률을 입력하고 몬테카를로 방식으로 다양한 미래 시나리오를 확인해보세요.</p>
+        </div>
+
+        <div class="simulator-tool reveal">
+          <div class="sim-grid">
+            <label>초기 투자금 (만원)
+              <input type="number" id="simInitial" value="1000" min="0" step="10" />
+            </label>
+            <label>월 적립금 (만원)
+              <input type="number" id="simMonthly" value="50" min="0" step="5" />
+            </label>
+            <label>예상 연평균 수익률 (%)
+              <input type="number" id="simReturn" value="7" step="0.5" />
+            </label>
+            <label>연간 변동성 (%)
+              <input type="number" id="simVolatility" value="15" min="0" step="1" />
+            </label>
+            <label>투자 기간 (년)
+              <input type="number" id="simYears" value="10" min="1" max="40" step="1" />
+            </label>
+            <label>시뮬레이션 횟수
+              <input type="number" id="simRuns" value="200" min="10" max="500" step="10" />
+            </label>
+          </div>
+          <button type="button" id="runSimBtn" class="btn btn-primary">시뮬레이션 실행</button>
+
+          <div id="simResult" class="sim-result" hidden>
+            <div class="chart-wrap">
+              <canvas id="simChart" height="320"></canvas>
+            </div>
+            <div class="news-stats grid-4" id="simStats"></div>
+          </div>
+
+          <p class="disclaimer-box">
+            ⚠ 본 시뮬레이션은 입력한 가정(수익률, 변동성)에 기반한 무작위 추정치이며 실제 투자 결과를 보장하지 않습니다.
+            과거 수익률이 미래 수익률을 보장하지 않습니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tips">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Practical Tips</span>
+          <h2>지금 바로 적용할 수 있는 투자 팁</h2>
+          <p>작은 습관이 모여 투자 성과의 차이를 만듭니다.</p>
+        </div>
+        <div class="tips-list">
+          <div class="tip-item reveal">
+            <div class="tip-number">1</div>
+            <div>
+              <h3>투자 목표와 기간을 먼저 정하세요</h3>
+              <p>목표 수익률과 투자 기간이 명확해야 종목과 전략 선택 기준이 생깁니다.</p>
+            </div>
+          </div>
+          <div class="tip-item reveal">
+            <div class="tip-number">2</div>
+            <div>
+              <h3>기업의 재무제표를 확인하는 습관을 들이세요</h3>
+              <p>매출, 이익, 부채비율 등 기본 지표만 확인해도 리스크를 크게 줄일 수 있습니다.</p>
+            </div>
+          </div>
+          <div class="tip-item reveal">
+            <div class="tip-number">3</div>
+            <div>
+              <h3>매매 일지를 기록하세요</h3>
+              <p>매수·매도 이유를 기록하면 감정적 매매를 줄이고 전략을 개선할 수 있습니다.</p>
+            </div>
+          </div>
+          <div class="tip-item reveal">
+            <div class="tip-number">4</div>
+            <div>
+              <h3>분할 매수·매도를 활용하세요</h3>
+              <p>한 번에 몰아서 거래하기보다 나누어 진입·청산하면 평균 단가 리스크를 줄일 수 있습니다.</p>
+            </div>
+          </div>
+          <div class="tip-item reveal">
+            <div class="tip-number">5</div>
+            <div>
+              <h3>정보의 출처를 항상 검증하세요</h3>
+              <p>SNS·커뮤니티 정보에 의존하기보다 공시자료와 신뢰할 수 있는 출처를 우선하세요.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="subscribe" class="section-alt">
+      <div class="container">
+        <div class="cta reveal">
+          <h2>매주 투자 인사이트를 이메일로 받아보세요</h2>
+          <p>시장 동향 요약과 투자 원칙 콘텐츠를 정기적으로 보내드립니다.</p>
+          <form class="subscribe-form">
+            <input type="email" placeholder="이메일 주소를 입력하세요" required aria-label="이메일 주소" />
+            <button type="submit" class="btn btn-primary">구독하기</button>
+          </form>
+          <p class="form-message"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span class="footer-copy">&copy; <span data-year>2026</span> 주식 성공. All rights reserved.</span>
+      <ul class="footer-links">
+        <li><a href="#principles">투자 원칙</a></li>
+        <li><a href="#market">시장 개요</a></li>
+        <li><a href="#tips">투자 팁</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script src="news-predictor.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="simulator.js"></script>
+</body>
 </html>
