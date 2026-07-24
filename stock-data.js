@@ -150,6 +150,7 @@ window.StockData = (() => {
   const PROXIES = [
     (target) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(target),
     (target) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(target),
+    (target) => "https://api.cors.lol/?url=" + encodeURIComponent(target),
   ];
 
   const memCache = new Map();
@@ -170,9 +171,9 @@ window.StockData = (() => {
     return new Promise((resolve, reject) => {
       let remaining = PROXIES.length;
       let settled = false;
-      let firstError = null;
+      const errors = [];
 
-      PROXIES.forEach((buildProxyUrl) => {
+      PROXIES.forEach((buildProxyUrl, i) => {
         fetchWithTimeout(buildProxyUrl(target), timeoutMs)
           .then(async (res) => {
             if (!res.ok) throw new Error("HTTP " + res.status);
@@ -183,10 +184,11 @@ window.StockData = (() => {
             }
           })
           .catch((err) => {
-            if (!firstError) firstError = err;
+            errors[i] = (err && err.name === "AbortError" ? "timeout" : err?.message) || "error";
             remaining -= 1;
             if (remaining === 0 && !settled) {
-              reject(firstError);
+              console.warn("[StockData] all proxies failed for", target, errors);
+              reject(new Error(errors[0] || "모든 프록시 요청 실패"));
             }
           });
       });
@@ -225,6 +227,10 @@ window.StockData = (() => {
     return { ...data, series: data.series.map((p) => ({ date: new Date(p.date), close: p.close })) };
   }
 
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   async function fetchChartJson(symbol, range, interval, timeoutMs) {
     const target =
       "https://query1.finance.yahoo.com/v8/finance/chart/" +
@@ -233,12 +239,24 @@ window.StockData = (() => {
       range +
       "&interval=" +
       interval;
-    const json = await raceProxies(target, timeoutMs);
-    const result = json?.chart?.result?.[0];
-    if (!result || !result.timestamp || !result.indicators?.quote?.[0]?.close) {
-      throw new Error("종목 데이터를 찾을 수 없습니다");
+
+    // Free public proxies occasionally rate-limit or blip — one retry after
+    // a short pause clears most transient failures without much added latency.
+    let lastErr = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await wait(1200);
+      try {
+        const json = await raceProxies(target, timeoutMs);
+        const result = json?.chart?.result?.[0];
+        if (!result || !result.timestamp || !result.indicators?.quote?.[0]?.close) {
+          throw new Error("종목 데이터를 찾을 수 없습니다");
+        }
+        return result;
+      } catch (err) {
+        lastErr = err;
+      }
     }
-    return result;
+    throw lastErr;
   }
 
   async function fetchYahooChart(symbol, range = "5y", interval = "1d") {
@@ -247,7 +265,7 @@ window.StockData = (() => {
     if (cached) return cached;
 
     try {
-      const result = await fetchChartJson(symbol, range, interval, 10000);
+      const result = await fetchChartJson(symbol, range, interval, 12000);
       const parsed = parseChartResult(result);
       writeCache(cacheKey, parsed);
       return parsed;
@@ -264,7 +282,7 @@ window.StockData = (() => {
     if (cached) return cached;
 
     try {
-      const result = await fetchChartJson(symbol, "5d", "1d", 8000);
+      const result = await fetchChartJson(symbol, "5d", "1d", 9000);
       const quote = parseQuote(result);
       writeCache(cacheKey, quote);
       return quote;
