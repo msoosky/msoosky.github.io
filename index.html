@@ -54,93 +54,57 @@
     <section id="dashboard" class="dashboard-section">
       <div class="container">
         <div class="section-head reveal">
-          <span class="eyebrow">My Dashboard</span>
-          <h2>대시보드</h2>
-          <p>보유 종목과 관심 종목의 실시간 시세를 확인하세요. 모든 데이터는 이 브라우저에만 저장됩니다.</p>
+          <span class="eyebrow">Real-Time Market</span>
+          <h2>실시간 시세 대시보드</h2>
+          <p>주요 지수·환율과 130여 개 종목의 시세를 빠르게 검색하고 확인하세요.</p>
         </div>
 
         <div class="dashboard-panel reveal">
-          <div class="dashboard-toolbar">
-            <span class="field-hint" id="lastUpdated">불러오는 중...</span>
-            <button type="button" id="refreshDashboardBtn" class="btn btn-secondary btn-sm">
-              <span aria-hidden="true">⟳</span> 새로고침
-            </button>
+          <div class="ticker-bar" id="tickerBar"></div>
+
+          <div class="market-search-row">
+            <input type="text" id="marketSearchInput" placeholder="종목명, 코드, 섹터로 검색 (예: 삼성전자, AAPL, 반도체)" autocomplete="off" />
+            <span class="field-hint" id="marketResultCount"></span>
           </div>
 
-          <div class="grid-4" id="indexTickerRow">
-            <div class="market-card skeleton-card"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div>
-            <div class="market-card skeleton-card"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div>
-            <div class="market-card skeleton-card"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div>
-            <div class="market-card skeleton-card"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div>
-          </div>
-
-          <div class="tab-toggle" id="dashTabToggle">
-            <button type="button" class="tab-btn is-active" data-tab="holdings">보유 종목</button>
-            <button type="button" class="tab-btn" data-tab="watchlist">관심 종목</button>
-          </div>
-
-          <div class="tab-panel is-active" id="tabHoldings">
-            <div class="panel-actions holding-add-row">
-              <input type="text" id="holdingSymbolInput" list="stockSymbolList" placeholder="종목명 또는 코드 검색 (예: 삼성전자, AAPL)" />
-              <span class="live-price-preview" id="holdingLivePreview"></span>
-              <input type="number" id="holdingQtyInput" min="0.0001" step="any" placeholder="수량" />
-              <input type="number" id="holdingAvgPriceInput" min="0" step="any" placeholder="평균매수가" />
-              <button type="button" id="holdingSubmitBtn" class="btn btn-primary btn-sm">추가</button>
-              <button type="button" id="holdingCancelEditBtn" class="btn btn-secondary btn-sm" hidden>취소</button>
+          <div class="market-table" id="marketTable">
+            <div class="market-table-header">
+              <span>종목코드</span><span>종목명</span><span class="num">현재가</span><span class="num">전일대비</span><span class="num">변동률</span><span class="num">거래량</span><span class="num">거래대금</span><span class="num">52주 최고/최저</span>
             </div>
-            <p id="holdingFormError" class="field-hint form-error" aria-live="polite"></p>
-            <div class="table-scroll">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>종목명</th><th>보유수량</th><th>평균매수가</th><th>현재가</th><th>평가금액</th><th>평가손익</th><th>수익률</th><th></th>
-                  </tr>
-                </thead>
-                <tbody id="holdingsTableBody"></tbody>
-              </table>
+            <div class="market-table-scroll" id="marketTableScroll">
+              <div class="market-table-spacer" id="marketTableSpacer">
+                <div class="market-table-viewport" id="marketTableViewport"></div>
+              </div>
             </div>
-            <p class="empty-state" id="holdingsEmpty" hidden>보유 종목이 없습니다. 종목을 추가해보세요.</p>
           </div>
 
-          <div class="tab-panel" id="tabWatchlist">
-            <div class="panel-actions">
-              <input type="text" id="watchlistSearchInput" list="stockSymbolList" placeholder="종목명 또는 코드 검색 (예: 삼성전자, AAPL)" />
-              <button type="button" id="addWatchlistBtn" class="btn btn-primary btn-sm">+ 관심종목 추가</button>
-            </div>
-            <div class="table-scroll">
-              <table class="data-table">
-                <thead>
-                  <tr><th>종목명</th><th>현재가</th><th>전일대비</th><th>거래량</th><th></th></tr>
-                </thead>
-                <tbody id="watchlistTableBody"></tbody>
-              </table>
-            </div>
-            <p class="empty-state" id="watchlistEmpty" hidden>관심 종목이 없습니다. 검색해서 추가해보세요.</p>
-          </div>
-
-          <div class="detail-panel" id="detailPanel" hidden>
+          <div class="detail-panel" id="marketDetailPanel" hidden>
             <div class="detail-panel-head">
-              <h3 id="detailName">-</h3>
-              <button type="button" class="icon-btn" id="detailCloseBtn" aria-label="닫기">✕</button>
+              <div>
+                <h3 id="marketDetailName">-</h3>
+                <span class="stock-symbol-badge" id="marketDetailBadge">-</span>
+              </div>
+              <button type="button" class="icon-btn" id="marketDetailCloseBtn" aria-label="닫기">✕</button>
             </div>
             <div class="stock-price-block detail-price-block">
-              <span class="stock-current-price" id="detailPrice">-</span>
-              <span class="period-value" id="detailChangeBadge"></span>
+              <span class="stock-current-price mono" id="marketDetailPrice">-</span>
+              <span class="period-value mono" id="marketDetailChange"></span>
             </div>
-            <div class="chart-range-toggle" id="detailRangeToggle">
-              <button type="button" class="range-btn is-active" data-range="1d">1일</button>
-              <button type="button" class="range-btn" data-range="1w">1주</button>
-              <button type="button" class="range-btn" data-range="1mo">1개월</button>
-              <button type="button" class="range-btn" data-range="1y">1년</button>
+
+            <div class="detail-columns">
+              <div class="chart-wrap"><canvas id="marketDetailChart" height="260"></canvas></div>
+              <div class="orderbook-col">
+                <h4 class="detail-subhead">호가 (모의)</h4>
+                <div class="orderbook" id="marketOrderBook"></div>
+              </div>
             </div>
-            <p id="detailStatus" class="field-hint"></p>
-            <div class="chart-wrap"><canvas id="detailChart" height="260"></canvas></div>
-            <div class="news-stats grid-4" id="detailStats"></div>
+
+            <div class="news-stats grid-4" id="marketDetailMetrics"></div>
           </div>
 
           <p class="disclaimer-box">
-            ⚠ 데이터 출처: Yahoo Finance(공개 API, 프록시 경유). 지연 시세일 수 있으며 PER·PBR·시가총액은 무료 데이터 소스 제한으로 제공되지 않습니다.
-            투자 자문이 아니며 보유 종목 정보는 이 브라우저에만 저장됩니다.
+            ⚠ 이 대시보드는 실제 시세 API 없이 동작하는 <strong>모의(Mock) 실시간 데이터</strong>입니다. 종목명·코드는 실제 기업 기준이지만
+            가격·호가·거래량은 브라우저에서 임의로 생성되어 1.5초 간격으로 갱신됩니다. 실제 투자 판단에 사용하지 마세요.
           </p>
         </div>
       </div>
@@ -536,7 +500,6 @@
 
   <script src="script.js"></script>
   <script src="stock-data.js"></script>
-  <script src="portfolio-store.js"></script>
   <script src="news-predictor.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="stock-analyzer.js"></script>
@@ -544,9 +507,8 @@
   <script src="backtest.js"></script>
   <script src="infinite-buy.js"></script>
   <script src="recommendations.js"></script>
-  <script src="detail-panel.js"></script>
-  <script src="holdings.js"></script>
-  <script src="watchlist.js"></script>
-  <script src="dashboard.js"></script>
+  <script src="market-mock-data.js"></script>
+  <script src="market-dashboard.js"></script>
+  <script src="market-detail.js"></script>
 </body>
 </html>
