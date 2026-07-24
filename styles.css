@@ -966,6 +966,10 @@ textarea {
   border-top: 1px solid var(--color-border);
 }
 
+#indexTickerRow {
+  margin-bottom: 28px;
+}
+
 .tab-toggle {
   display: flex;
   gap: 8px;
@@ -1195,10 +1199,6 @@ textarea {
 .btn-sm {
   padding: 8px 14px;
   font-size: 0.82rem;
-}
-
-.asset-summary-row {
-  margin: 16px 0 28px;
 }
 
 .icon-btn {

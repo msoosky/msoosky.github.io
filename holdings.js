@@ -9,9 +9,8 @@ window.Holdings = (() => {
   const cancelEditBtn = document.getElementById("holdingCancelEditBtn");
   const formError = document.getElementById("holdingFormError");
 
-  if (!tbody || !window.PortfolioStore || !window.StockData) return { render() {}, getTotals: () => null };
+  if (!tbody || !window.PortfolioStore || !window.StockData) return { render() {} };
 
-  let lastTotals = null;
   let editId = null;
   let previewToken = 0;
 
@@ -121,8 +120,7 @@ window.Holdings = (() => {
     if (!holdings.length) {
       tbody.innerHTML = "";
       emptyEl.hidden = false;
-      lastTotals = { totalValue: 0, totalCost: 0, totalPnl: 0, totalReturnPct: null, dailyPnl: 0, fxMissing: false };
-      return lastTotals;
+      return;
     }
     emptyEl.hidden = true;
 
@@ -141,20 +139,7 @@ window.Holdings = (() => {
       )
       .join("");
 
-    const needsFx = holdings.some((h) => !h.symbol.endsWith(".KS") && !h.symbol.endsWith(".KQ"));
-    const [quotes, fxRate] = await Promise.all([
-      window.StockData.fetchQuotesBatch(holdings.map((h) => h.symbol)),
-      needsFx
-        ? window.StockData.fetchQuote("KRW=X")
-            .then((q) => q.price)
-            .catch(() => null)
-        : Promise.resolve(null),
-    ]);
-
-    let totalValue = 0;
-    let totalCost = 0;
-    let dailyPnl = 0;
-    let fxMissing = false;
+    const quotes = await window.StockData.fetchQuotesBatch(holdings.map((h) => h.symbol));
 
     holdings.forEach((h) => {
       const row = tbody.querySelector(`tr[data-id="${CSS.escape(h.id)}"]`);
@@ -179,19 +164,6 @@ window.Holdings = (() => {
       const evalAmount = h.qty * q.price;
       const pnl = evalAmount - cost;
       const returnPct = cost > 0 ? (pnl / cost) * 100 : 0;
-      const dayChange = q.changeAmt != null ? q.changeAmt * h.qty : 0;
-
-      // Portfolio totals need one common currency (KRW); convert non-KRW
-      // rows using the live USD/KRW rate instead of summing mixed currencies.
-      const toKrw = q.currency === "KRW" ? 1 : fxRate;
-      if (toKrw == null) {
-        fxMissing = true;
-      } else {
-        totalValue += evalAmount * toKrw;
-        totalCost += cost * toKrw;
-        dailyPnl += dayChange * toKrw;
-      }
-
       const pnlDir = pnl > 0 ? "up" : pnl < 0 ? "down" : "";
 
       row.innerHTML = `
@@ -207,11 +179,6 @@ window.Holdings = (() => {
           <button type="button" class="icon-btn row-delete-btn" aria-label="삭제">🗑</button>
         </td>`;
     });
-
-    const totalPnl = totalValue - totalCost;
-    const totalReturnPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : null;
-    lastTotals = { totalValue, totalCost, totalPnl, totalReturnPct, dailyPnl, fxMissing };
-    return lastTotals;
   }
 
   tbody.addEventListener("click", (e) => {
@@ -246,8 +213,5 @@ window.Holdings = (() => {
   submitBtn.addEventListener("click", handleSubmit);
   cancelEditBtn.addEventListener("click", resetForm);
 
-  return {
-    render,
-    getTotals: () => lastTotals,
-  };
+  return { render };
 })();
