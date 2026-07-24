@@ -6,7 +6,9 @@
   --color-border: #e7e9ec;
   --color-accent: #16643f;
   --color-accent-light: #e6f2ec;
-  --color-danger: #c0392b;
+  --color-danger: #ef4444;
+  --color-up: #ef4444;
+  --color-down: #3b82f6;
   --max-width: 1120px;
   --radius: 12px;
   --shadow: 0 4px 20px rgba(20, 25, 35, 0.06);
@@ -44,6 +46,15 @@ img {
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 0 24px;
+}
+
+/* Generic gain/loss utility (KR convention: up = red, down = blue) */
+.up {
+  color: var(--color-up);
+}
+
+.down {
+  color: var(--color-down);
 }
 
 /* Header */
@@ -193,7 +204,7 @@ img {
 }
 
 .btn-secondary {
-  background: #fff;
+  background: var(--color-bg);
   color: var(--color-text);
   border-color: var(--color-border);
 }
@@ -247,7 +258,7 @@ section {
 }
 
 .card {
-  background: #fff;
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 28px;
@@ -292,7 +303,7 @@ section {
 }
 
 .market-card {
-  background: #fff;
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 22px;
@@ -325,7 +336,7 @@ section {
 }
 
 .market-change.down {
-  color: #1a5fb4;
+  color: var(--color-down);
 }
 
 .market-note {
@@ -347,7 +358,7 @@ section {
   display: flex;
   gap: 16px;
   align-items: flex-start;
-  background: #fff;
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 20px 24px;
@@ -419,7 +430,7 @@ section {
 }
 
 .subscribe-form .btn-primary {
-  background: #fff;
+  background: var(--color-bg);
   color: var(--color-accent);
 }
 
@@ -618,7 +629,7 @@ code {
 }
 
 .period-card .period-value.down {
-  color: #1a5fb4;
+  color: var(--color-down);
 }
 
 .chart-range-toggle {
@@ -632,7 +643,7 @@ code {
   padding: 7px 14px;
   border-radius: 999px;
   border: 1px solid var(--color-border);
-  background: #fff;
+  background: var(--color-bg);
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--color-text-muted);
@@ -670,7 +681,7 @@ code {
 .simulator-tool {
   max-width: 820px;
   margin: 0 auto;
-  background: #fff;
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 32px;
@@ -741,14 +752,14 @@ textarea {
 
 .sentiment-badge.negative {
   background: #eaf1fb;
-  color: #1a5fb4;
+  color: var(--color-down);
 }
 
 .gauge-bar {
   position: relative;
   height: 10px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #1a5fb4, #d8dce2 50%, var(--color-danger));
+  background: linear-gradient(90deg, var(--color-down), #d8dce2 50%, var(--color-up));
   max-width: 420px;
   margin: 0 auto;
 }
@@ -760,7 +771,7 @@ textarea {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--color-bg);
   border: 3px solid var(--color-text);
   transform: translate(-50%, -50%);
   transition: left 0.4s ease;
@@ -845,7 +856,7 @@ textarea {
 
 .headline-item.negative .headline-tag {
   background: #eaf1fb;
-  color: #1a5fb4;
+  color: var(--color-down);
 }
 
 .headline-text {
@@ -933,7 +944,7 @@ textarea {
   font-family: inherit;
   font-size: 0.95rem;
   color: var(--color-text);
-  background: #fff;
+  background: var(--color-bg);
 }
 
 .backtest-detail {
@@ -1051,7 +1062,7 @@ textarea {
     top: 68px;
     left: 0;
     right: 0;
-    background: #fff;
+    background: var(--color-bg);
     flex-direction: column;
     gap: 0;
     border-bottom: 1px solid var(--color-border);
@@ -1084,5 +1095,286 @@ textarea {
   .subscribe-form input[type="email"] {
     min-width: 0;
     width: 100%;
+  }
+}
+
+/* Portfolio dashboard (dark mode, scoped) */
+.dashboard-section {
+  --color-bg: #10131a;
+  --color-bg-alt: #191d27;
+  --color-text: #e7e9ee;
+  --color-text-muted: #8b93a3;
+  --color-border: #262b38;
+  --color-accent: #34d399;
+  --color-accent-light: rgba(52, 211, 153, 0.14);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.dashboard-section .section-head p {
+  color: var(--color-text-muted);
+}
+
+.dashboard-panel {
+  max-width: 100%;
+}
+
+.dashboard-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+}
+
+.asset-summary-row {
+  margin: 16px 0 28px;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.icon-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+/* Skeleton loading */
+.skeleton-card {
+  overflow: hidden;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, var(--color-border) 25%, rgba(255, 255, 255, 0.08) 37%, var(--color-border) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+.skeleton-line.w-60 {
+  width: 60%;
+  height: 18px;
+}
+
+.skeleton-line.w-40 {
+  width: 40%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 28px 0 16px;
+}
+
+.panel-actions input[type="text"] {
+  flex: 1;
+  min-width: 220px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px 16px;
+  text-align: right;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.data-table th:first-child,
+.data-table td:first-child {
+  text-align: left;
+}
+
+.data-table thead th {
+  background: var(--color-bg-alt);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.data-table tbody tr {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.data-table tbody tr:hover {
+  background: var(--color-bg-alt);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table .row-name {
+  font-weight: 600;
+}
+
+.data-table .row-loading {
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: left;
+}
+
+.data-table .row-symbol {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.data-table .row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.empty-state {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  border: 1px dashed var(--color-border);
+  border-radius: 10px;
+  margin-top: 12px;
+}
+
+.detail-panel {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+.detail-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.detail-panel-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.detail-price-block {
+  text-align: left;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 14, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 200;
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-bg, #fff);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal form {
+  display: grid;
+  gap: 14px;
+}
+
+.modal form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.modal form input {
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+.form-error {
+  color: var(--color-down);
+  min-height: 1.2em;
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (max-width: 720px) {
+  .dashboard-toolbar {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 480px) {
+  .detail-price-block {
+    flex-direction: column;
+    gap: 2px;
   }
 }

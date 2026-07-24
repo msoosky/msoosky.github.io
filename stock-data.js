@@ -152,8 +152,10 @@ window.StockData = (() => {
     (target) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(target),
   ];
 
-  const cache = new Map();
-  const CACHE_TTL_MS = 15 * 60 * 1000;
+  const memCache = new Map();
+  const CHART_TTL_MS = 15 * 60 * 1000;
+  const QUOTE_TTL_MS = 45 * 1000;
+  const SESSION_PREFIX = "stockCache:";
 
   function fetchWithTimeout(url, ms) {
     const controller = new AbortController();
@@ -161,13 +163,69 @@ window.StockData = (() => {
     return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
   }
 
-  async function fetchYahooChart(symbol, range = "5y", interval = "1d") {
-    const cacheKey = symbol + "|" + range + "|" + interval;
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.time < CACHE_TTL_MS) {
-      return cached.data;
-    }
+  // Fires every proxy in parallel and resolves with whichever responds first,
+  // instead of waiting through each one sequentially — this is the main lever
+  // on perceived load time since a single proxy can be slow/unreliable.
+  function raceProxies(target, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      let remaining = PROXIES.length;
+      let settled = false;
+      let firstError = null;
 
+      PROXIES.forEach((buildProxyUrl) => {
+        fetchWithTimeout(buildProxyUrl(target), timeoutMs)
+          .then(async (res) => {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const json = await res.json();
+            if (!settled) {
+              settled = true;
+              resolve(json);
+            }
+          })
+          .catch((err) => {
+            if (!firstError) firstError = err;
+            remaining -= 1;
+            if (remaining === 0 && !settled) {
+              reject(firstError);
+            }
+          });
+      });
+    });
+  }
+
+  function readCache(key, ttlMs) {
+    const inMem = memCache.get(key);
+    if (inMem && Date.now() - inMem.time < ttlMs) return inMem.data;
+
+    try {
+      const raw = sessionStorage.getItem(SESSION_PREFIX + key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Date.now() - parsed.time >= ttlMs) return null;
+      const data = reviveDates(parsed.data);
+      memCache.set(key, { time: parsed.time, data });
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCache(key, data) {
+    const entry = { time: Date.now(), data };
+    memCache.set(key, entry);
+    try {
+      sessionStorage.setItem(SESSION_PREFIX + key, JSON.stringify(entry));
+    } catch {
+      // sessionStorage full/unavailable — in-memory cache still works for this tab session
+    }
+  }
+
+  function reviveDates(data) {
+    if (!data || !Array.isArray(data.series)) return data;
+    return { ...data, series: data.series.map((p) => ({ date: new Date(p.date), close: p.close })) };
+  }
+
+  async function fetchChartJson(symbol, range, interval, timeoutMs) {
     const target =
       "https://query1.finance.yahoo.com/v8/finance/chart/" +
       encodeURIComponent(symbol) +
@@ -175,25 +233,60 @@ window.StockData = (() => {
       range +
       "&interval=" +
       interval;
-
-    let lastError = null;
-    for (const buildProxyUrl of PROXIES) {
-      try {
-        const res = await fetchWithTimeout(buildProxyUrl(target), 12000);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const json = await res.json();
-        const result = json?.chart?.result?.[0];
-        if (!result || !result.timestamp || !result.indicators?.quote?.[0]?.close) {
-          throw new Error("종목 데이터를 찾을 수 없습니다");
-        }
-        const parsed = parseChartResult(result);
-        cache.set(cacheKey, { time: Date.now(), data: parsed });
-        return parsed;
-      } catch (err) {
-        lastError = err;
-      }
+    const json = await raceProxies(target, timeoutMs);
+    const result = json?.chart?.result?.[0];
+    if (!result || !result.timestamp || !result.indicators?.quote?.[0]?.close) {
+      throw new Error("종목 데이터를 찾을 수 없습니다");
     }
-    throw new Error("주가 데이터를 불러오지 못했습니다: " + (lastError?.message || "알 수 없는 오류"));
+    return result;
+  }
+
+  async function fetchYahooChart(symbol, range = "5y", interval = "1d") {
+    const cacheKey = "chart|" + symbol + "|" + range + "|" + interval;
+    const cached = readCache(cacheKey, CHART_TTL_MS);
+    if (cached) return cached;
+
+    try {
+      const result = await fetchChartJson(symbol, range, interval, 10000);
+      const parsed = parseChartResult(result);
+      writeCache(cacheKey, parsed);
+      return parsed;
+    } catch (err) {
+      throw new Error("주가 데이터를 불러오지 못했습니다: " + (err?.message || "알 수 없는 오류"));
+    }
+  }
+
+  // Lightweight quote for dashboard/watchlist rows: small payload (5 daily
+  // points, mainly reading `meta`), short TTL so auto-refresh stays current.
+  async function fetchQuote(symbol) {
+    const cacheKey = "quote|" + symbol;
+    const cached = readCache(cacheKey, QUOTE_TTL_MS);
+    if (cached) return cached;
+
+    try {
+      const result = await fetchChartJson(symbol, "5d", "1d", 8000);
+      const quote = parseQuote(result);
+      writeCache(cacheKey, quote);
+      return quote;
+    } catch (err) {
+      throw new Error("시세를 불러오지 못했습니다: " + (err?.message || "알 수 없는 오류"));
+    }
+  }
+
+  // Fetches all symbols in parallel; failed ones resolve to {symbol, error}
+  // instead of rejecting the whole batch, so one bad ticker doesn't block the rest.
+  async function fetchQuotesBatch(symbols) {
+    const unique = [...new Set(symbols)];
+    const results = await Promise.all(
+      unique.map((symbol) =>
+        fetchQuote(symbol)
+          .then((quote) => ({ symbol, quote, error: null }))
+          .catch((err) => ({ symbol, quote: null, error: err.message }))
+      )
+    );
+    const map = new Map();
+    results.forEach((r) => map.set(r.symbol, r));
+    return map;
   }
 
   function parseChartResult(result) {
@@ -210,6 +303,28 @@ window.StockData = (() => {
       name: result.meta.longName || result.meta.shortName || result.meta.symbol,
       currency: result.meta.currency || "USD",
       series,
+    };
+  }
+
+  function parseQuote(result) {
+    const m = result.meta;
+    const price = m.regularMarketPrice;
+    const prevClose = m.chartPreviousClose ?? m.previousClose;
+    const changeAmt = price != null && prevClose != null ? price - prevClose : null;
+    const changePct = price != null && prevClose ? (changeAmt / prevClose) * 100 : null;
+    return {
+      symbol: m.symbol,
+      name: m.longName || m.shortName || m.symbol,
+      currency: m.currency || "USD",
+      price,
+      prevClose,
+      changeAmt,
+      changePct,
+      dayHigh: m.regularMarketDayHigh ?? null,
+      dayLow: m.regularMarketDayLow ?? null,
+      volume: m.regularMarketVolume ?? null,
+      weekHigh52: m.fiftyTwoWeekHigh ?? null,
+      weekLow52: m.fiftyTwoWeekLow ?? null,
     };
   }
 
@@ -254,9 +369,19 @@ window.StockData = (() => {
     return sign + value.toFixed(2) + "%";
   }
 
+  const MARKET_INDEXES = [
+    { symbol: "^KS11", label: "코스피 (KOSPI)" },
+    { symbol: "^KQ11", label: "코스닥 (KOSDAQ)" },
+    { symbol: "^GSPC", label: "S&P 500" },
+    { symbol: "^IXIC", label: "나스닥 (NASDAQ)" },
+  ];
+
   return {
     CURATED_STOCKS,
+    MARKET_INDEXES,
     fetchYahooChart,
+    fetchQuote,
+    fetchQuotesBatch,
     nearestOnOrBefore,
     nearestOnOrAfter,
     periodChange,

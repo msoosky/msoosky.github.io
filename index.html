@@ -20,8 +20,8 @@
         <span></span>
       </button>
       <ul class="nav-links">
+        <li><a href="#dashboard">대시보드</a></li>
         <li><a href="#principles">투자 원칙</a></li>
-        <li><a href="#market">시장 개요</a></li>
         <li><a href="#stock-analysis">종목 분석</a></li>
         <li><a href="#news-predict">뉴스 예측</a></li>
         <li><a href="#simulator">시뮬레이터</a></li>
@@ -48,6 +48,102 @@
         <p class="disclaimer-note">
           본 콘텐츠는 정보 제공 목적이며 투자 권유가 아닙니다. 투자 결정과 책임은 본인에게 있습니다.
         </p>
+      </div>
+    </section>
+
+    <section id="dashboard" class="dashboard-section">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">My Dashboard</span>
+          <h2>포트폴리오 대시보드</h2>
+          <p>보유 종목과 관심 종목의 실시간 시세를 확인하세요. 모든 데이터는 이 브라우저에만 저장됩니다.</p>
+        </div>
+
+        <div class="dashboard-panel reveal">
+          <div class="dashboard-toolbar">
+            <span class="field-hint" id="lastUpdated">불러오는 중...</span>
+            <button type="button" id="refreshDashboardBtn" class="btn btn-secondary btn-sm">
+              <span aria-hidden="true">⟳</span> 새로고침
+            </button>
+          </div>
+
+          <div class="grid-4" id="indexTickerRow">
+            <div class="market-card skeleton-card"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div>
+            <div class="market-card skeleton-card"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div>
+            <div class="market-card skeleton-card"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div>
+            <div class="market-card skeleton-card"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div>
+          </div>
+
+          <div class="grid-4 asset-summary-row" id="assetSummaryRow">
+            <div class="stat-box"><span class="stat-num" id="assetTotalValue">-</span><span class="stat-label">내 총자산</span></div>
+            <div class="stat-box"><span class="stat-num" id="assetTotalPnl">-</span><span class="stat-label">총 평가손익</span></div>
+            <div class="stat-box"><span class="stat-num" id="assetTotalReturn">-</span><span class="stat-label">총 수익률</span></div>
+            <div class="stat-box"><span class="stat-num" id="assetDailyPnl">-</span><span class="stat-label">일간 손익</span></div>
+          </div>
+
+          <div class="tab-toggle" id="dashTabToggle">
+            <button type="button" class="tab-btn is-active" data-tab="holdings">보유 종목</button>
+            <button type="button" class="tab-btn" data-tab="watchlist">관심 종목</button>
+          </div>
+
+          <div class="tab-panel is-active" id="tabHoldings">
+            <div class="panel-actions">
+              <button type="button" id="addHoldingBtn" class="btn btn-primary btn-sm">+ 종목 추가</button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>종목명</th><th>보유수량</th><th>평균매수가</th><th>현재가</th><th>평가금액</th><th>평가손익</th><th>수익률</th><th></th>
+                  </tr>
+                </thead>
+                <tbody id="holdingsTableBody"></tbody>
+              </table>
+            </div>
+            <p class="empty-state" id="holdingsEmpty" hidden>보유 종목이 없습니다. 종목을 추가해보세요.</p>
+          </div>
+
+          <div class="tab-panel" id="tabWatchlist">
+            <div class="panel-actions">
+              <input type="text" id="watchlistSearchInput" list="stockSymbolList" placeholder="종목명 또는 코드 검색 (예: 삼성전자, AAPL)" />
+              <button type="button" id="addWatchlistBtn" class="btn btn-primary btn-sm">+ 관심종목 추가</button>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr><th>종목명</th><th>현재가</th><th>전일대비</th><th>거래량</th><th></th></tr>
+                </thead>
+                <tbody id="watchlistTableBody"></tbody>
+              </table>
+            </div>
+            <p class="empty-state" id="watchlistEmpty" hidden>관심 종목이 없습니다. 검색해서 추가해보세요.</p>
+          </div>
+
+          <div class="detail-panel" id="detailPanel" hidden>
+            <div class="detail-panel-head">
+              <h3 id="detailName">-</h3>
+              <button type="button" class="icon-btn" id="detailCloseBtn" aria-label="닫기">✕</button>
+            </div>
+            <div class="stock-price-block detail-price-block">
+              <span class="stock-current-price" id="detailPrice">-</span>
+              <span class="period-value" id="detailChangeBadge"></span>
+            </div>
+            <div class="chart-range-toggle" id="detailRangeToggle">
+              <button type="button" class="range-btn is-active" data-range="1d">1일</button>
+              <button type="button" class="range-btn" data-range="1w">1주</button>
+              <button type="button" class="range-btn" data-range="1mo">1개월</button>
+              <button type="button" class="range-btn" data-range="1y">1년</button>
+            </div>
+            <p id="detailStatus" class="field-hint"></p>
+            <div class="chart-wrap"><canvas id="detailChart" height="260"></canvas></div>
+            <div class="news-stats grid-4" id="detailStats"></div>
+          </div>
+
+          <p class="disclaimer-box">
+            ⚠ 데이터 출처: Yahoo Finance(공개 API, 프록시 경유). 지연 시세일 수 있으며 PER·PBR·시가총액은 무료 데이터 소스 제한으로 제공되지 않습니다.
+            투자 자문이 아니며 보유 종목 정보는 이 브라우저에만 저장됩니다.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -90,39 +186,6 @@
             <p>수수료, 세금 등 눈에 보이지 않는 비용이 장기 수익률에 미치는 영향을 고려합니다.</p>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section id="market" class="section-alt">
-      <div class="container">
-        <div class="section-head reveal">
-          <span class="eyebrow">Market Overview</span>
-          <h2>주요 지수 한눈에 보기</h2>
-          <p>국내외 대표 지수 동향을 참고용으로 확인해보세요.</p>
-        </div>
-        <div class="grid-4">
-          <div class="market-card reveal">
-            <div class="market-name">코스피 (KOSPI)</div>
-            <div class="market-value">2,650.32</div>
-            <div class="market-change up">▲ 12.45 (0.47%)</div>
-          </div>
-          <div class="market-card reveal">
-            <div class="market-name">코스닥 (KOSDAQ)</div>
-            <div class="market-value">865.10</div>
-            <div class="market-change down">▼ 4.21 (0.48%)</div>
-          </div>
-          <div class="market-card reveal">
-            <div class="market-name">다우존스 (DJIA)</div>
-            <div class="market-value">39,120.55</div>
-            <div class="market-change up">▲ 88.30 (0.23%)</div>
-          </div>
-          <div class="market-card reveal">
-            <div class="market-name">나스닥 (NASDAQ)</div>
-            <div class="market-value">16,405.80</div>
-            <div class="market-change up">▲ 145.12 (0.89%)</div>
-          </div>
-        </div>
-        <p class="market-note">※ 위 수치는 예시 데이터이며 실시간 시세가 아닙니다.</p>
       </div>
     </section>
 
@@ -410,20 +473,51 @@
     <div class="container">
       <span class="footer-copy">&copy; <span data-year>2026</span> 주식 성공. All rights reserved.</span>
       <ul class="footer-links">
+        <li><a href="#dashboard">대시보드</a></li>
         <li><a href="#principles">투자 원칙</a></li>
-        <li><a href="#market">시장 개요</a></li>
         <li><a href="#tips">투자 팁</a></li>
       </ul>
     </div>
   </footer>
 
+  <div class="modal-overlay" id="holdingModalOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="holdingModalTitle">
+      <div class="detail-panel-head">
+        <h3 id="holdingModalTitle">종목 추가</h3>
+        <button type="button" class="icon-btn" id="holdingModalCloseBtn" aria-label="닫기">✕</button>
+      </div>
+      <form id="holdingForm">
+        <label>종목 코드
+          <input type="text" id="holdingSymbol" list="stockSymbolList" placeholder="예: 005930.KS, AAPL" required />
+        </label>
+        <label>보유 수량
+          <input type="number" id="holdingQty" min="0.0001" step="any" required />
+        </label>
+        <label>평균 매수가
+          <input type="number" id="holdingAvgPrice" min="0" step="any" required />
+        </label>
+        <input type="hidden" id="holdingEditId" />
+        <p id="holdingFormError" class="field-hint form-error" aria-live="polite"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="holdingCancelBtn">취소</button>
+          <button type="submit" class="btn btn-primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="script.js"></script>
   <script src="stock-data.js"></script>
+  <script src="portfolio-store.js"></script>
   <script src="news-predictor.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="stock-analyzer.js"></script>
   <script src="simulator.js"></script>
   <script src="backtest.js"></script>
   <script src="recommendations.js"></script>
+  <script src="detail-panel.js"></script>
+  <script src="holdings.js"></script>
+  <script src="watchlist.js"></script>
+  <script src="dashboard.js"></script>
 </body>
 </html>
