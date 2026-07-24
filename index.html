@@ -22,8 +22,10 @@
       <ul class="nav-links">
         <li><a href="#principles">투자 원칙</a></li>
         <li><a href="#market">시장 개요</a></li>
+        <li><a href="#stock-analysis">종목 분석</a></li>
         <li><a href="#news-predict">뉴스 예측</a></li>
         <li><a href="#simulator">시뮬레이터</a></li>
+        <li><a href="#recommendations">추천 종목</a></li>
         <li><a href="#tips">투자 팁</a></li>
         <li><a href="#subscribe">뉴스레터</a></li>
       </ul>
@@ -124,6 +126,66 @@
       </div>
     </section>
 
+    <section id="stock-analysis">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Stock Analysis</span>
+          <h2>종목 상세 분석</h2>
+          <p>종목 코드를 입력하면 최근 시세와 기간별 등락률, 가격 추이 그래프를 확인할 수 있습니다.</p>
+        </div>
+
+        <div class="news-tool reveal">
+          <div class="news-input-row">
+            <input
+              type="text"
+              id="stockSymbol"
+              value="005930.KS"
+              list="stockSymbolList"
+              placeholder="종목 코드 (예: 005930.KS, AAPL)"
+            />
+            <datalist id="stockSymbolList"></datalist>
+            <button type="button" id="analyzeStockBtn" class="btn btn-primary">분석하기</button>
+          </div>
+          <p class="field-hint">
+            국내 종목은 KOSPI는 <code>.KS</code>, KOSDAQ은 <code>.KQ</code> 접미사를 붙여주세요 (예: 삼성전자 005930.KS). 해외 종목은 티커만 입력하면 됩니다 (예: AAPL, MSFT).
+          </p>
+          <p id="stockStatus" class="field-hint" aria-live="polite"></p>
+
+          <div id="stockResult" class="stock-result" hidden>
+            <div class="stock-header">
+              <div>
+                <h3 id="stockName">-</h3>
+                <span class="stock-symbol-badge" id="stockSymbolBadge">-</span>
+              </div>
+              <div class="stock-price-block">
+                <span class="stock-current-price" id="stockCurrentPrice">-</span>
+                <span class="stock-current-date" id="stockCurrentDate"></span>
+              </div>
+            </div>
+
+            <div class="period-grid" id="periodGrid"></div>
+
+            <div class="chart-range-toggle" id="chartRangeToggle">
+              <button type="button" class="range-btn" data-days="7">1주</button>
+              <button type="button" class="range-btn" data-days="30">1개월</button>
+              <button type="button" class="range-btn" data-days="91">3개월</button>
+              <button type="button" class="range-btn" data-days="182">6개월</button>
+              <button type="button" class="range-btn is-active" data-days="365">1년</button>
+              <button type="button" class="range-btn" data-days="1095">3년</button>
+              <button type="button" class="range-btn" data-days="1825">5년</button>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="stockChart" height="320"></canvas>
+            </div>
+          </div>
+
+          <p class="disclaimer-box">
+            ⚠ 데이터 출처: Yahoo Finance(공개 API, 프록시 경유). 지연 시세일 수 있으며 실제 매매 시 증권사 앱의 시세를 반드시 재확인하세요. 투자 자문이 아닙니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
     <section id="news-predict" class="section-alt">
       <div class="container">
         <div class="section-head reveal">
@@ -180,44 +242,105 @@
         <div class="section-head reveal">
           <span class="eyebrow">Simulation</span>
           <h2>투자 시뮬레이터</h2>
-          <p>초기 투자금과 예상 수익률을 입력하고 몬테카를로 방식으로 다양한 미래 시나리오를 확인해보세요.</p>
+          <p>가정 기반 미래 시나리오 또는 실제 종목의 과거 데이터를 활용한 백테스트로 투자 결과를 확인해보세요.</p>
         </div>
 
         <div class="simulator-tool reveal">
-          <div class="sim-grid">
-            <label>초기 투자금 (만원)
-              <input type="number" id="simInitial" value="1000" min="0" step="10" />
-            </label>
-            <label>월 적립금 (만원)
-              <input type="number" id="simMonthly" value="50" min="0" step="5" />
-            </label>
-            <label>예상 연평균 수익률 (%)
-              <input type="number" id="simReturn" value="7" step="0.5" />
-            </label>
-            <label>연간 변동성 (%)
-              <input type="number" id="simVolatility" value="15" min="0" step="1" />
-            </label>
-            <label>투자 기간 (년)
-              <input type="number" id="simYears" value="10" min="1" max="40" step="1" />
-            </label>
-            <label>시뮬레이션 횟수
-              <input type="number" id="simRuns" value="200" min="10" max="500" step="10" />
-            </label>
+          <div class="tab-toggle" id="simTabToggle">
+            <button type="button" class="tab-btn is-active" data-tab="montecarlo">가정 기반 시뮬레이션</button>
+            <button type="button" class="tab-btn" data-tab="backtest">실제 종목 백테스트</button>
           </div>
-          <button type="button" id="runSimBtn" class="btn btn-primary">시뮬레이션 실행</button>
 
-          <div id="simResult" class="sim-result" hidden>
-            <div class="chart-wrap">
-              <canvas id="simChart" height="320"></canvas>
+          <div class="tab-panel is-active" id="tabMontecarlo">
+            <div class="sim-grid">
+              <label>초기 투자금 (만원)
+                <input type="number" id="simInitial" value="1000" min="0" step="10" />
+              </label>
+              <label>월 적립금 (만원)
+                <input type="number" id="simMonthly" value="50" min="0" step="5" />
+              </label>
+              <label>예상 연평균 수익률 (%)
+                <input type="number" id="simReturn" value="7" step="0.5" />
+              </label>
+              <label>연간 변동성 (%)
+                <input type="number" id="simVolatility" value="15" min="0" step="1" />
+              </label>
+              <label>투자 기간 (년)
+                <input type="number" id="simYears" value="10" min="1" max="40" step="1" />
+              </label>
+              <label>시뮬레이션 횟수
+                <input type="number" id="simRuns" value="200" min="10" max="500" step="10" />
+              </label>
             </div>
-            <div class="news-stats grid-4" id="simStats"></div>
+            <button type="button" id="runSimBtn" class="btn btn-primary">시뮬레이션 실행</button>
+
+            <div id="simResult" class="sim-result" hidden>
+              <div class="chart-wrap">
+                <canvas id="simChart" height="320"></canvas>
+              </div>
+              <div class="news-stats grid-4" id="simStats"></div>
+            </div>
+
+            <p class="disclaimer-box">
+              ⚠ 본 시뮬레이션은 입력한 가정(수익률, 변동성)에 기반한 무작위 추정치이며 실제 투자 결과를 보장하지 않습니다.
+              과거 수익률이 미래 수익률을 보장하지 않습니다.
+            </p>
           </div>
 
-          <p class="disclaimer-box">
-            ⚠ 본 시뮬레이션은 입력한 가정(수익률, 변동성)에 기반한 무작위 추정치이며 실제 투자 결과를 보장하지 않습니다.
-            과거 수익률이 미래 수익률을 보장하지 않습니다.
-          </p>
+          <div class="tab-panel" id="tabBacktest">
+            <div class="sim-grid">
+              <label>종목 코드
+                <input type="text" id="btSymbol" value="005930.KS" list="stockSymbolList" placeholder="예: 005930.KS, AAPL" />
+              </label>
+              <label>투자 방식
+                <select id="btMethod">
+                  <option value="lump">일시불 (시작일에 한번에 매수)</option>
+                  <option value="dca">정액 적립식 (매월 매수)</option>
+                </select>
+              </label>
+              <label>시작일
+                <input type="date" id="btStartDate" />
+              </label>
+              <label>종료일
+                <input type="date" id="btEndDate" />
+              </label>
+              <label id="btAmountLabel">투자 금액 (만원)
+                <input type="number" id="btAmount" value="1000" min="1" step="10" />
+              </label>
+            </div>
+            <button type="button" id="runBacktestBtn" class="btn btn-primary">백테스트 실행</button>
+            <p id="backtestStatus" class="field-hint" aria-live="polite"></p>
+
+            <div id="backtestResult" class="sim-result" hidden>
+              <div class="news-stats grid-4" id="backtestSummary"></div>
+              <div class="news-stats grid-3" id="backtestSummary2"></div>
+              <div class="chart-wrap">
+                <canvas id="backtestChart" height="320"></canvas>
+              </div>
+              <div class="backtest-detail" id="backtestDetail"></div>
+            </div>
+
+            <p class="disclaimer-box">
+              ⚠ 실제 과거 시세 데이터를 기반으로 계산하지만, 거래 수수료·세금·슬리피지는 반영되지 않았습니다.
+              과거 수익률이 미래 수익률을 보장하지 않으며 투자 자문이 아닙니다.
+            </p>
+          </div>
         </div>
+      </div>
+    </section>
+
+    <section id="recommendations" class="section-alt">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Long-term Picks</span>
+          <h2>장기투자 추천 종목</h2>
+          <p>사업 경쟁력과 산업 내 위치를 기준으로 선정한 장기투자 후보 종목입니다. 매수 추천이 아닌 리서치 참고 자료로 활용하세요.</p>
+        </div>
+        <div class="grid-3" id="recommendationGrid"></div>
+        <p class="disclaimer-box">
+          ⚠ 위 종목 선정은 특정 산업 내 사업 경쟁력을 기준으로 한 편집팀의 주관적 견해이며, 매수·매도를 권유하는 것이 아닙니다.
+          모든 투자의 책임은 투자자 본인에게 있으며, 투자 전 반드시 최신 재무정보와 리스크를 직접 확인하세요.
+        </p>
       </div>
     </section>
 
@@ -295,8 +418,12 @@
   </footer>
 
   <script src="script.js"></script>
+  <script src="stock-data.js"></script>
   <script src="news-predictor.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="stock-analyzer.js"></script>
   <script src="simulator.js"></script>
+  <script src="backtest.js"></script>
+  <script src="recommendations.js"></script>
 </body>
 </html>

@@ -51,4 +51,18 @@ document.addEventListener("DOMContentLoaded", () => {
   if (yearEl) {
     yearEl.textContent = new Date().getFullYear();
   }
+
+  document.querySelectorAll(".tab-toggle").forEach((toggle) => {
+    toggle.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab-btn");
+      if (!btn) return;
+      const tabName = btn.dataset.tab;
+      const wrapper = toggle.parentElement;
+
+      toggle.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("is-active", b === btn));
+      wrapper.querySelectorAll(".tab-panel").forEach((panel) => {
+        panel.classList.toggle("is-active", panel.id.toLowerCase() === "tab" + tabName);
+      });
+    });
+  });
 });
