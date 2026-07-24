@@ -87,9 +87,15 @@
           </div>
 
           <div class="tab-panel is-active" id="tabHoldings">
-            <div class="panel-actions">
-              <button type="button" id="addHoldingBtn" class="btn btn-primary btn-sm">+ 종목 추가</button>
+            <div class="panel-actions holding-add-row">
+              <input type="text" id="holdingSymbolInput" list="stockSymbolList" placeholder="종목명 또는 코드 검색 (예: 삼성전자, AAPL)" />
+              <span class="live-price-preview" id="holdingLivePreview"></span>
+              <input type="number" id="holdingQtyInput" min="0.0001" step="any" placeholder="수량" />
+              <input type="number" id="holdingAvgPriceInput" min="0" step="any" placeholder="평균매수가" />
+              <button type="button" id="holdingSubmitBtn" class="btn btn-primary btn-sm">추가</button>
+              <button type="button" id="holdingCancelEditBtn" class="btn btn-secondary btn-sm" hidden>취소</button>
             </div>
+            <p id="holdingFormError" class="field-hint form-error" aria-live="polite"></p>
             <div class="table-scroll">
               <table class="data-table">
                 <thead>
@@ -479,32 +485,6 @@
       </ul>
     </div>
   </footer>
-
-  <div class="modal-overlay" id="holdingModalOverlay" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="holdingModalTitle">
-      <div class="detail-panel-head">
-        <h3 id="holdingModalTitle">종목 추가</h3>
-        <button type="button" class="icon-btn" id="holdingModalCloseBtn" aria-label="닫기">✕</button>
-      </div>
-      <form id="holdingForm">
-        <label>종목 코드
-          <input type="text" id="holdingSymbol" list="stockSymbolList" placeholder="예: 005930.KS, AAPL" required />
-        </label>
-        <label>보유 수량
-          <input type="number" id="holdingQty" min="0.0001" step="any" required />
-        </label>
-        <label>평균 매수가
-          <input type="number" id="holdingAvgPrice" min="0" step="any" required />
-        </label>
-        <input type="hidden" id="holdingEditId" />
-        <p id="holdingFormError" class="field-hint form-error" aria-live="polite"></p>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" id="holdingCancelBtn">취소</button>
-          <button type="submit" class="btn btn-primary">저장</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
   <script src="script.js"></script>
   <script src="stock-data.js"></script>

@@ -1308,67 +1308,41 @@ textarea {
   gap: 12px;
 }
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(8, 10, 14, 0.6);
-  display: flex;
+/* Inline holding add/edit row */
+.holding-add-row {
   align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 200;
 }
 
-.modal {
-  width: 100%;
-  max-width: 420px;
-  background: var(--color-bg, #fff);
-  border-radius: var(--radius);
-  padding: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modal form {
-  display: grid;
-  gap: 14px;
-}
-
-.modal form label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.modal form input {
-  padding: 11px 12px;
+.holding-add-row input[type="number"] {
+  width: 130px;
+  padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--color-border);
-  font-family: inherit;
-  font-size: 0.95rem;
-  color: var(--color-text);
   background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.live-price-preview {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  min-width: 90px;
 }
 
 .form-error {
   color: var(--color-down);
   min-height: 1.2em;
-  margin: 0;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 4px;
+  margin: 6px 0 0;
 }
 
 @media (max-width: 720px) {
   .dashboard-toolbar {
     justify-content: space-between;
+  }
+  .holding-add-row input[type="number"] {
+    width: 100px;
   }
 }
 
@@ -1376,5 +1350,8 @@ textarea {
   .detail-price-block {
     flex-direction: column;
     gap: 2px;
+  }
+  .holding-add-row input[type="number"] {
+    width: 100%;
   }
 }
