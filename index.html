@@ -225,6 +225,7 @@
               <div>
                 <h3 id="stockName">-</h3>
                 <span class="stock-symbol-badge" id="stockSymbolBadge">-</span>
+                <a href="#" id="discussionLink" target="_blank" rel="noopener noreferrer" class="discussion-link" hidden>💬 종목토론실 보기</a>
               </div>
               <div class="stock-price-block">
                 <span class="stock-current-price" id="stockCurrentPrice">-</span>
@@ -233,6 +234,12 @@
             </div>
 
             <div class="period-grid" id="periodGrid"></div>
+
+            <div class="compare-row">
+              <input type="text" id="compareSymbolInput" list="stockSymbolList" placeholder="비교할 종목 추가 (예: MSFT, 000660.KS)" />
+              <button type="button" id="addCompareBtn" class="btn btn-secondary btn-sm">+ 비교 추가</button>
+              <div class="compare-chips" id="compareChips"></div>
+            </div>
 
             <div class="chart-range-toggle" id="chartRangeToggle">
               <button type="button" class="range-btn" data-days="7">1주</button>
@@ -243,6 +250,7 @@
               <button type="button" class="range-btn" data-days="1095">3년</button>
               <button type="button" class="range-btn" data-days="1825">5년</button>
             </div>
+            <p class="field-hint" id="chartModeHint"></p>
             <div class="chart-wrap">
               <canvas id="stockChart" height="320"></canvas>
             </div>
@@ -318,6 +326,7 @@
           <div class="tab-toggle" id="simTabToggle">
             <button type="button" class="tab-btn is-active" data-tab="montecarlo">가정 기반 시뮬레이션</button>
             <button type="button" class="tab-btn" data-tab="backtest">실제 종목 백테스트</button>
+            <button type="button" class="tab-btn" data-tab="infinitebuy">🔁 무한매수법</button>
           </div>
 
           <div class="tab-panel is-active" id="tabMontecarlo">
@@ -392,6 +401,52 @@
             <p class="disclaimer-box">
               ⚠ 실제 과거 시세 데이터를 기반으로 계산하지만, 거래 수수료·세금·슬리피지는 반영되지 않았습니다.
               과거 수익률이 미래 수익률을 보장하지 않으며 투자 자문이 아닙니다.
+            </p>
+          </div>
+
+          <div class="tab-panel" id="tabInfinitebuy">
+            <p class="field-hint">
+              총 시드머니를 정해진 회차로 나누어 매일 분할 매수하고, 목표 수익률에 도달하면 보유 수량의 일부를 매도해 수익을 실현하는 전략을 시뮬레이션합니다.
+              커뮤니티에서 통용되는 방식을 단순화해 구현한 것으로, 실제 전략의 세부 룰(변동성 매수 조건 등)과는 차이가 있을 수 있습니다.
+            </p>
+            <div class="sim-grid">
+              <label>종목 코드
+                <input type="text" id="ibSymbol" value="TQQQ" list="stockSymbolList" placeholder="예: TQQQ, SOXL, 005930.KS" />
+              </label>
+              <label>총 시드머니 (만원)
+                <input type="number" id="ibSeed" value="1000" min="1" step="10" />
+              </label>
+              <label>분할 회차
+                <input type="number" id="ibRounds" value="40" min="2" max="200" step="1" />
+              </label>
+              <label>목표 수익률 (%)
+                <input type="number" id="ibTargetReturn" value="10" min="0.5" step="0.5" />
+              </label>
+              <label>회차당 매도 비율 (%)
+                <input type="number" id="ibSellRatio" value="25" min="1" max="100" step="1" />
+              </label>
+              <label>시작일
+                <input type="date" id="ibStartDate" />
+              </label>
+              <label>종료일
+                <input type="date" id="ibEndDate" />
+              </label>
+            </div>
+            <button type="button" id="runInfiniteBuyBtn" class="btn btn-primary">시뮬레이션 실행</button>
+            <p id="infiniteBuyStatus" class="field-hint" aria-live="polite"></p>
+
+            <div id="infiniteBuyResult" class="sim-result" hidden>
+              <div class="news-stats grid-4" id="infiniteBuySummary"></div>
+              <div class="news-stats grid-3" id="infiniteBuySummary2"></div>
+              <div class="chart-wrap">
+                <canvas id="infiniteBuyChart" height="320"></canvas>
+              </div>
+              <div class="backtest-detail" id="infiniteBuyDetail"></div>
+            </div>
+
+            <p class="disclaimer-box">
+              ⚠ 무한매수법은 하락장이 길어지면 시드머니가 회차 내에 소진되어 추가 대응이 어려울 수 있는 전략입니다.
+              레버리지 상품(3배 ETF 등)에 적용되는 경우가 많아 원금 손실 위험이 특히 크며, 이 시뮬레이션은 교육·참고 목적일 뿐 투자 자문이 아닙니다.
             </p>
           </div>
         </div>
@@ -494,6 +549,7 @@
   <script src="stock-analyzer.js"></script>
   <script src="simulator.js"></script>
   <script src="backtest.js"></script>
+  <script src="infinite-buy.js"></script>
   <script src="recommendations.js"></script>
   <script src="detail-panel.js"></script>
   <script src="holdings.js"></script>
