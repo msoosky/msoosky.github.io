@@ -1,6 +1,6 @@
 window.MarketDetail = (() => {
   const panel = document.getElementById("marketDetailPanel");
-  if (!panel || !window.MarketMock || typeof Chart === "undefined") {
+  if (!panel || !window.MarketData || !window.StockData || typeof Chart === "undefined") {
     return { show() {}, hide() {} };
   }
 
@@ -9,16 +9,18 @@ window.MarketDetail = (() => {
   const priceEl = document.getElementById("marketDetailPrice");
   const changeEl = document.getElementById("marketDetailChange");
   const metricsEl = document.getElementById("marketDetailMetrics");
-  const orderBookEl = document.getElementById("marketOrderBook");
   const closeBtn = document.getElementById("marketDetailCloseBtn");
   const canvas = document.getElementById("marketDetailChart");
 
-  const MAX_POINTS = 60;
+  const MAX_POINTS = 80;
+  const PIN_REFRESH_MS = 15000;
 
   let currentSymbol = null;
   let chartInstance = null;
   let priceHistory = [];
   let unsubscribe = null;
+  let pinTimer = null;
+  let chartRequestId = 0;
 
   function fmtPrice(v, currency) {
     if (v == null) return "-";
@@ -27,69 +29,41 @@ window.MarketDetail = (() => {
   }
 
   function fmtPct(pct) {
+    if (pct == null) return "-";
     const sign = pct > 0 ? "+" : "";
     return sign + pct.toFixed(2) + "%";
-  }
-
-  function fmtMarketCap(value, currency) {
-    if (currency === "KRW") {
-      if (value >= 1e12) return (value / 1e12).toFixed(1) + "조원";
-      return (value / 1e8).toFixed(0) + "억원";
-    }
-    if (value >= 1e12) return "$" + (value / 1e12).toFixed(2) + "T";
-    return "$" + (value / 1e9).toFixed(1) + "B";
   }
 
   function dirClass(v) {
     return v > 0 ? "up" : v < 0 ? "down" : "";
   }
 
-  function generateBackfill(stock, count) {
-    const points = [stock.price];
-    let p = stock.price;
-    for (let i = 1; i < count; i++) {
-      p = p / (1 + (Math.random() - 0.5) * 0.006);
-      points.unshift(Math.round(p * 100) / 100);
-    }
-    return points;
-  }
-
   function renderHeader(stock) {
     nameEl.textContent = stock.name;
     badgeEl.textContent = stock.symbol;
+    if (stock.price == null) {
+      priceEl.textContent = "시세를 불러오는 중...";
+      changeEl.textContent = stock.error ? "실시간 시세를 가져오지 못했습니다: " + stock.error : "";
+      changeEl.className = "period-value mono";
+      return;
+    }
     priceEl.textContent = fmtPrice(stock.price, stock.currency);
     changeEl.textContent =
       (stock.changeAmt >= 0 ? "+" : "") + fmtPrice(stock.changeAmt, stock.currency) + " (" + fmtPct(stock.changePct) + ")";
     changeEl.className = "period-value mono " + dirClass(stock.changePct);
   }
 
+  // All six tiles come straight from the real Yahoo Finance quote — no
+  // approximated PER/PBR/market-cap figures that could drift from reality.
   function renderMetrics(stock) {
-    const marketCap = stock.price * stock.sharesOutstanding;
     metricsEl.innerHTML = `
-      <div class="stat-box"><span class="stat-num mono">${stock.per > 0 ? stock.per.toFixed(1) : "적자"}</span><span class="stat-label">PER</span></div>
-      <div class="stat-box"><span class="stat-num mono">${stock.pbr > 0 ? stock.pbr.toFixed(2) : "N/A"}</span><span class="stat-label">PBR</span></div>
-      <div class="stat-box"><span class="stat-num mono">${stock.dividendYield.toFixed(2)}%</span><span class="stat-label">배당수익률</span></div>
-      <div class="stat-box"><span class="stat-num mono">${fmtMarketCap(marketCap, stock.currency)}</span><span class="stat-label">시가총액 (모의)</span></div>
+      <div class="stat-box"><span class="stat-num mono">${fmtPrice(stock.prevClose, stock.currency)}</span><span class="stat-label">전일종가</span></div>
+      <div class="stat-box"><span class="stat-num mono">${fmtPrice(stock.dayHigh, stock.currency)}</span><span class="stat-label">일중 고가</span></div>
+      <div class="stat-box"><span class="stat-num mono">${fmtPrice(stock.dayLow, stock.currency)}</span><span class="stat-label">일중 저가</span></div>
+      <div class="stat-box"><span class="stat-num mono">${stock.volume != null ? Math.round(stock.volume).toLocaleString("ko-KR") : "-"}</span><span class="stat-label">거래량</span></div>
+      <div class="stat-box"><span class="stat-num mono">${fmtPrice(stock.weekHigh52, stock.currency)}</span><span class="stat-label">52주 최고</span></div>
+      <div class="stat-box"><span class="stat-num mono">${fmtPrice(stock.weekLow52, stock.currency)}</span><span class="stat-label">52주 최저</span></div>
     `;
-  }
-
-  function renderOrderBook(stock) {
-    const { bids, asks } = window.MarketMock.getOrderBook(stock.symbol, 8);
-    const askRows = [...asks]
-      .reverse()
-      .map(
-        (l) =>
-          `<div class="orderbook-row ask"><span class="ob-price mono">${fmtPrice(l.price, stock.currency)}</span><span class="ob-qty mono">${l.qty.toLocaleString("ko-KR")}</span></div>`
-      )
-      .join("");
-    const bidRows = bids
-      .map(
-        (l) =>
-          `<div class="orderbook-row bid"><span class="ob-price mono">${fmtPrice(l.price, stock.currency)}</span><span class="ob-qty mono">${l.qty.toLocaleString("ko-KR")}</span></div>`
-      )
-      .join("");
-    orderBookEl.innerHTML =
-      askRows + `<div class="orderbook-mid mono">${fmtPrice(stock.price, stock.currency)}</div>` + bidRows;
   }
 
   function drawChart(currency) {
@@ -125,15 +99,41 @@ window.MarketDetail = (() => {
     });
   }
 
-  function updateChart() {
-    if (!chartInstance) return;
-    chartInstance.data.labels = priceHistory.map((_, i) => i);
-    chartInstance.data.datasets[0].data = priceHistory;
-    chartInstance.update("none");
+  // Pulls a real short-term price series from Yahoo Finance (via the same
+  // proxy layer stock-analysis/backtest use) instead of fabricating a
+  // backfill locally. StockData caches chart responses for 15 minutes, so
+  // re-calling this on every pin refresh doesn't add extra network load.
+  async function loadChart(stock) {
+    const requestId = ++chartRequestId;
+    try {
+      const chart = await window.StockData.fetchYahooChart(stock.symbol, "5d", "15m");
+      if (requestId !== chartRequestId) return;
+      let series = chart.series;
+      if (!series.length) throw new Error("no intraday series");
+      priceHistory = series.slice(-MAX_POINTS).map((p) => p.close);
+    } catch {
+      try {
+        const chart = await window.StockData.fetchYahooChart(stock.symbol, "3mo", "1d");
+        if (requestId !== chartRequestId) return;
+        priceHistory = chart.series.slice(-MAX_POINTS).map((p) => p.close);
+      } catch {
+        if (requestId !== chartRequestId) return;
+        priceHistory = stock.price != null ? [stock.price] : [];
+      }
+    }
+    if (requestId !== chartRequestId) return;
+    drawChart(stock.currency);
+  }
+
+  function refreshFromStore() {
+    const stock = window.MarketData.getStock(currentSymbol);
+    if (!stock) return;
+    renderHeader(stock);
+    renderMetrics(stock);
   }
 
   function show(symbol) {
-    const stock = window.MarketMock.getStock(symbol);
+    const stock = window.MarketData.getStock(symbol);
     if (!stock) return;
     currentSymbol = symbol;
 
@@ -142,30 +142,38 @@ window.MarketDetail = (() => {
 
     renderHeader(stock);
     renderMetrics(stock);
-    renderOrderBook(stock);
-
-    priceHistory = generateBackfill(stock, MAX_POINTS);
-    drawChart(stock.currency);
+    loadChart(stock);
 
     if (unsubscribe) unsubscribe();
-    unsubscribe = window.MarketMock.subscribe(({ changedSymbols }) => {
+    unsubscribe = window.MarketData.subscribe(({ changedSymbols }) => {
       if (!changedSymbols.includes(currentSymbol)) return;
-      const s = window.MarketMock.getStock(currentSymbol);
-      renderHeader(s);
-      renderMetrics(s);
-      renderOrderBook(s);
-      priceHistory.push(s.price);
-      if (priceHistory.length > MAX_POINTS) priceHistory.shift();
-      updateChart();
+      refreshFromStore();
     });
+
+    // Keep this symbol's quote fresh even if the user scrolls the table
+    // away from its row (which would otherwise stop it being "visible").
+    if (pinTimer) clearInterval(pinTimer);
+    pinTimer = setInterval(() => {
+      if (!currentSymbol) return;
+      window.MarketData.refreshSymbols([currentSymbol]);
+      const s = window.MarketData.getStock(currentSymbol);
+      if (s) loadChart(s);
+    }, PIN_REFRESH_MS);
+
+    window.MarketData.refreshSymbols([symbol]);
   }
 
   function hide() {
     panel.hidden = true;
     currentSymbol = null;
+    chartRequestId++;
     if (unsubscribe) {
       unsubscribe();
       unsubscribe = null;
+    }
+    if (pinTimer) {
+      clearInterval(pinTimer);
+      pinTimer = null;
     }
   }
 

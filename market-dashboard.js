@@ -6,12 +6,12 @@
   const spacerEl = document.getElementById("marketTableSpacer");
   const viewportEl = document.getElementById("marketTableViewport");
 
-  if (!tickerBarEl || !scrollEl || !window.MarketMock) return;
+  if (!tickerBarEl || !scrollEl || !window.MarketData) return;
 
   const ROW_HEIGHT = 44;
   const BUFFER = 6;
 
-  const fullList = window.MarketMock.getUniverse();
+  const fullList = window.MarketData.getUniverse();
   let filteredList = fullList;
 
   /** symbol -> {el, priceEl, changeEl, changePctEl, volumeEl, valueEl, lastPrice} */
@@ -26,16 +26,19 @@
   }
 
   function fmtChangeAmt(stock) {
+    if (stock.changeAmt == null) return "-";
     const sign = stock.changeAmt > 0 ? "+" : "";
     return sign + fmtPrice(stock.changeAmt, stock.currency);
   }
 
   function fmtPct(pct) {
+    if (pct == null) return "-";
     const sign = pct > 0 ? "+" : "";
     return sign + pct.toFixed(2) + "%";
   }
 
   function fmtCompact(value, currency) {
+    if (value == null) return "-";
     if (currency === "KRW") {
       if (value >= 1e12) return (value / 1e12).toFixed(2) + "조";
       if (value >= 1e8) return (value / 1e8).toFixed(1) + "억";
@@ -44,6 +47,10 @@
     if (value >= 1e9) return "$" + (value / 1e9).toFixed(2) + "B";
     if (value >= 1e6) return "$" + (value / 1e6).toFixed(1) + "M";
     return "$" + Math.round(value).toLocaleString("en-US");
+  }
+
+  function fmtVolume(v) {
+    return v == null ? "-" : Math.round(v).toLocaleString("ko-KR");
   }
 
   function dirClass(v) {
@@ -64,16 +71,16 @@
     el.classList.add(direction === "up" ? "flash-up" : "flash-down");
   }
 
-  // ---- Ticker bar ----
+  // ---- Ticker bar (real index/FX quotes) ----
   function renderTickerBar() {
-    const indexes = window.MarketMock.getIndexes();
+    const indexes = window.MarketData.getIndexes();
     tickerBarEl.innerHTML = indexes
       .map(
         (idx) => `
       <div class="ticker-item mono" data-symbol="${idx.symbol}">
         <span class="ticker-label">${escapeHtml(idx.label)}</span>
-        <span class="ticker-price">${idx.price.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        <span class="ticker-change ${dirClass(idx.changePct)}">${idx.changeAmt >= 0 ? "+" : ""}${idx.changeAmt.toFixed(2)} (${fmtPct(idx.changePct)})</span>
+        <span class="ticker-price">${idx.price != null ? idx.price.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "불러오는 중"}</span>
+        <span class="ticker-change ${dirClass(idx.changePct)}">${idx.changeAmt == null ? "" : (idx.changeAmt >= 0 ? "+" : "") + idx.changeAmt.toFixed(2) + " (" + fmtPct(idx.changePct) + ")"}</span>
       </div>`
       )
       .join("");
@@ -82,11 +89,11 @@
   }
 
   function updateTickerBar() {
-    window.MarketMock.getIndexes().forEach((idx) => {
+    window.MarketData.getIndexes().forEach((idx) => {
       const el = tickerItems.get(idx.symbol);
-      if (!el) return;
+      if (!el || idx.price == null) return;
       const lastPrice = tickerLastPrices.get(idx.symbol);
-      const tickDir = idx.price > lastPrice ? "up" : idx.price < lastPrice ? "down" : "";
+      const tickDir = lastPrice == null ? "" : idx.price > lastPrice ? "up" : idx.price < lastPrice ? "down" : "";
       tickerLastPrices.set(idx.symbol, idx.price);
 
       el.querySelector(".ticker-price").textContent = idx.price.toLocaleString("ko-KR", {
@@ -112,7 +119,7 @@
       <span class="num mono price-cell">${fmtPrice(stock.price, stock.currency)}</span>
       <span class="num mono change-cell ${dirClass(stock.changePct)}">${fmtChangeAmt(stock)}</span>
       <span class="num mono changepct-cell ${dirClass(stock.changePct)}">${fmtPct(stock.changePct)}</span>
-      <span class="num mono volume-cell">${Math.round(stock.volume).toLocaleString("ko-KR")}</span>
+      <span class="num mono volume-cell">${fmtVolume(stock.volume)}</span>
       <span class="num mono value-cell">${fmtCompact(stock.tradingValue, stock.currency)}</span>
       <span class="num mono range-cell">${fmtPrice(stock.weekLow52, stock.currency)} ~ ${fmtPrice(stock.weekHigh52, stock.currency)}</span>
     `;
@@ -124,6 +131,7 @@
       changePctEl: el.querySelector(".changepct-cell"),
       volumeEl: el.querySelector(".volume-cell"),
       valueEl: el.querySelector(".value-cell"),
+      rangeEl: el.querySelector(".range-cell"),
       lastPrice: stock.price,
     };
   }
@@ -140,14 +148,20 @@
 
     renderedRows = new Map();
     const frag = document.createDocumentFragment();
+    const visibleSymbols = [];
     for (let i = startIndex; i < endIndex; i++) {
       const stock = filteredList[i];
       const row = buildRow(stock);
       frag.appendChild(row.el);
       renderedRows.set(stock.symbol, row);
+      visibleSymbols.push(stock.symbol);
     }
     viewportEl.innerHTML = "";
     viewportEl.appendChild(frag);
+
+    // Only ask the network for quotes on rows that are actually on screen —
+    // this is what keeps a 190-symbol universe fast on free CORS proxies.
+    window.MarketData.setVisibleSymbols(visibleSymbols);
   }
 
   let scrollRaf = null;
@@ -182,13 +196,22 @@
     renderVisibleRows();
   }
 
-  // ---- Live tick handling: only DOM-patch rows currently rendered ----
+  // ---- Live update handling: only DOM-patch rows currently rendered, and
+  // only in response to a real quote that actually changed. ----
   function handleTick({ changedSymbols }) {
     changedSymbols.forEach((symbol) => {
       const row = renderedRows.get(symbol);
       if (!row) return;
-      const stock = window.MarketMock.getStock(symbol);
-      const tickDir = stock.price > row.lastPrice ? "up" : stock.price < row.lastPrice ? "down" : "";
+      const stock = window.MarketData.getStock(symbol);
+      if (!stock) return;
+      const tickDir =
+        row.lastPrice != null && stock.price != null
+          ? stock.price > row.lastPrice
+            ? "up"
+            : stock.price < row.lastPrice
+            ? "down"
+            : ""
+          : "";
       row.lastPrice = stock.price;
 
       row.priceEl.textContent = fmtPrice(stock.price, stock.currency);
@@ -196,22 +219,22 @@
       row.changeEl.className = "num mono change-cell " + dirClass(stock.changePct);
       row.changePctEl.textContent = fmtPct(stock.changePct);
       row.changePctEl.className = "num mono changepct-cell " + dirClass(stock.changePct);
-      row.volumeEl.textContent = Math.round(stock.volume).toLocaleString("ko-KR");
+      row.volumeEl.textContent = fmtVolume(stock.volume);
       row.valueEl.textContent = fmtCompact(stock.tradingValue, stock.currency);
+      row.rangeEl.textContent = `${fmtPrice(stock.weekLow52, stock.currency)} ~ ${fmtPrice(stock.weekHigh52, stock.currency)}`;
 
       flash(row.el, tickDir);
     });
-
-    updateTickerBar();
   }
 
   renderTickerBar();
   applyFilter();
-  window.MarketMock.subscribe(handleTick);
-  window.MarketMock.start(1500);
+  window.MarketData.subscribe(handleTick);
+  window.MarketData.subscribeIndexes(updateTickerBar);
+  window.MarketData.start();
 
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) window.MarketMock.stop();
-    else window.MarketMock.start(1500);
+    if (document.hidden) window.MarketData.stop();
+    else window.MarketData.start();
   });
 })();

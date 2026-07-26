@@ -34,19 +34,6 @@ document.addEventListener("DOMContentLoaded", () => {
     revealEls.forEach((el) => el.classList.add("is-visible"));
   }
 
-  const subscribeForm = document.querySelector(".subscribe-form");
-  if (subscribeForm) {
-    const message = subscribeForm.querySelector(".form-message");
-    subscribeForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const emailInput = subscribeForm.querySelector('input[type="email"]');
-      if (emailInput && emailInput.value) {
-        message.textContent = "구독 신청이 접수되었습니다. 감사합니다!";
-        subscribeForm.reset();
-      }
-    });
-  }
-
   const yearEl = document.querySelector("[data-year]");
   if (yearEl) {
     yearEl.textContent = new Date().getFullYear();

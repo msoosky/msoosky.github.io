@@ -37,10 +37,19 @@
   let compareSymbols = [];
   const compareCache = new Map();
 
-  window.StockData.CURATED_STOCKS.forEach((s) => {
+  // The datalist offers every symbol from the real market-data universe
+  // (200-ish real KOSPI/KOSDAQ/NASDAQ/NYSE tickers) so analysis/backtest/
+  // infinite-buy aren't limited to the small curated recommendation list —
+  // any of them can still be typed by hand since fetchYahooChart accepts
+  // arbitrary real tickers.
+  const datalistSource = window.MarketData
+    ? window.MarketData.getUniverse().map((s) => ({ symbol: s.symbol, label: s.name }))
+    : window.StockData.CURATED_STOCKS.map((s) => ({ symbol: s.symbol, label: s.nameKo }));
+
+  datalistSource.forEach((s) => {
     const opt = document.createElement("option");
     opt.value = s.symbol;
-    opt.label = s.nameKo + " (" + s.symbol + ")";
+    opt.label = s.label + " (" + s.symbol + ")";
     opt.textContent = opt.label;
     symbolList.appendChild(opt);
   });
@@ -54,10 +63,14 @@
   function resolveSymbolFromInput(raw) {
     const value = raw.trim();
     if (!value) return null;
-    const byName = window.StockData.CURATED_STOCKS.find(
+    const byCurated = window.StockData.CURATED_STOCKS.find(
       (s) => s.nameKo === value || s.symbol.toLowerCase() === value.toLowerCase()
     );
-    return byName ? byName.symbol : value;
+    if (byCurated) return byCurated.symbol;
+    const byUniverse = window.MarketData?.getUniverse().find(
+      (s) => s.name === value || s.symbol.toLowerCase() === value.toLowerCase()
+    );
+    return byUniverse ? byUniverse.symbol : value;
   }
 
   function setDiscussionLink(symbol) {
