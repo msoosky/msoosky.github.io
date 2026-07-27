@@ -6,6 +6,7 @@ window.MarketDetail = (() => {
 
   const nameEl = document.getElementById("marketDetailName");
   const badgeEl = document.getElementById("marketDetailBadge");
+  const watchBtn = document.getElementById("marketDetailWatchBtn");
   const priceEl = document.getElementById("marketDetailPrice");
   const changeEl = document.getElementById("marketDetailChange");
   const metricsEl = document.getElementById("marketDetailMetrics");
@@ -38,9 +39,17 @@ window.MarketDetail = (() => {
     return v > 0 ? "up" : v < 0 ? "down" : "";
   }
 
+  function renderWatchButton(symbol) {
+    const watched = window.MarketData.isWatched(symbol);
+    watchBtn.classList.toggle("is-watched", watched);
+    watchBtn.textContent = watched ? "★" : "☆";
+    watchBtn.setAttribute("aria-pressed", String(watched));
+  }
+
   function renderHeader(stock) {
     nameEl.textContent = stock.name;
     badgeEl.textContent = stock.symbol;
+    renderWatchButton(stock.symbol);
     if (stock.price == null) {
       priceEl.textContent = "시세를 불러오는 중...";
       changeEl.textContent = stock.error ? "실시간 시세를 가져오지 못했습니다: " + stock.error : "";
@@ -178,6 +187,14 @@ window.MarketDetail = (() => {
   }
 
   closeBtn.addEventListener("click", hide);
+  watchBtn.addEventListener("click", () => {
+    if (!currentSymbol) return;
+    window.MarketData.toggleWatch(currentSymbol);
+    renderWatchButton(currentSymbol);
+  });
+  window.MarketData.subscribeWatchlist(() => {
+    if (currentSymbol) renderWatchButton(currentSymbol);
+  });
 
   return { show, hide };
 })();

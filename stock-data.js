@@ -155,7 +155,7 @@ window.StockData = (() => {
 
   const memCache = new Map();
   const CHART_TTL_MS = 15 * 60 * 1000;
-  const QUOTE_TTL_MS = 45 * 1000;
+  const QUOTE_TTL_MS = 9 * 1000;
   const SESSION_PREFIX = "stockCache:";
 
   function fetchWithTimeout(url, ms) {
@@ -231,7 +231,7 @@ window.StockData = (() => {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function fetchChartJson(symbol, range, interval, timeoutMs) {
+  async function fetchChartJson(symbol, range, interval, timeoutMs, attempts = 2) {
     const target =
       "https://query1.finance.yahoo.com/v8/finance/chart/" +
       encodeURIComponent(symbol) +
@@ -240,10 +240,12 @@ window.StockData = (() => {
       "&interval=" +
       interval;
 
-    // Free public proxies occasionally rate-limit or blip — one retry after
-    // a short pause clears most transient failures without much added latency.
+    // Free public proxies occasionally rate-limit or blip — a retry after a
+    // short pause clears most transient failures. Callers that already poll
+    // on a short interval (dashboard quotes) pass attempts=1 and just let the
+    // next poll be the retry, so a single request never blocks the UI long.
     let lastErr = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
       if (attempt > 0) await wait(1200);
       try {
         const json = await raceProxies(target, timeoutMs);
@@ -265,7 +267,7 @@ window.StockData = (() => {
     if (cached) return cached;
 
     try {
-      const result = await fetchChartJson(symbol, range, interval, 12000);
+      const result = await fetchChartJson(symbol, range, interval, 12000, 2);
       const parsed = parseChartResult(result);
       writeCache(cacheKey, parsed);
       return parsed;
@@ -275,14 +277,16 @@ window.StockData = (() => {
   }
 
   // Lightweight quote for dashboard/watchlist rows: small payload (5 daily
-  // points, mainly reading `meta`), short TTL so auto-refresh stays current.
+  // points, mainly reading `meta`), short TTL + a single attempt (no retry
+  // wait) so a slow/rate-limited proxy can't stall the dashboard — the
+  // caller's own ~10s poll loop is effectively the retry.
   async function fetchQuote(symbol) {
     const cacheKey = "quote|" + symbol;
     const cached = readCache(cacheKey, QUOTE_TTL_MS);
     if (cached) return cached;
 
     try {
-      const result = await fetchChartJson(symbol, "5d", "1d", 9000);
+      const result = await fetchChartJson(symbol, "5d", "1d", 7000, 1);
       const quote = parseQuote(result);
       writeCache(cacheKey, quote);
       return quote;

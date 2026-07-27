@@ -1,6 +1,8 @@
 (() => {
   const tickerBarEl = document.getElementById("tickerBar");
   const searchInput = document.getElementById("marketSearchInput");
+  const suggestEl = document.getElementById("marketSearchSuggest");
+  const watchFilterBtn = document.getElementById("watchlistFilterBtn");
   const resultCountEl = document.getElementById("marketResultCount");
   const scrollEl = document.getElementById("marketTableScroll");
   const spacerEl = document.getElementById("marketTableSpacer");
@@ -10,11 +12,14 @@
 
   const ROW_HEIGHT = 44;
   const BUFFER = 6;
+  const MAX_SUGGESTIONS = 8;
+  const TOAST_LIFETIME_MS = 6000;
 
   const fullList = window.MarketData.getUniverse();
   let filteredList = fullList;
+  let watchFilterActive = false;
 
-  /** symbol -> {el, priceEl, changeEl, changePctEl, volumeEl, valueEl, lastPrice} */
+  /** symbol -> {el, priceValueEl, risingBadgeEl, changeEl, changePctEl, volumeEl, valueEl, rangeEl, starEl, lastPrice} */
   let renderedRows = new Map();
   let tickerItems = new Map();
   let tickerLastPrices = new Map();
@@ -71,6 +76,29 @@
     el.classList.add(direction === "up" ? "flash-up" : "flash-down");
   }
 
+  // ---- Toasts for rising-watchlist signals ----
+  let toastContainer = null;
+  function ensureToastContainer() {
+    if (toastContainer) return toastContainer;
+    toastContainer = document.createElement("div");
+    toastContainer.className = "signal-toast-container";
+    document.body.appendChild(toastContainer);
+    return toastContainer;
+  }
+
+  function showSignalToast({ name, changePct }) {
+    const container = ensureToastContainer();
+    const toast = document.createElement("div");
+    toast.className = "signal-toast";
+    toast.innerHTML = `<span class="signal-toast-icon">🔺</span><span>${escapeHtml(name)} 상승 신호${changePct != null ? " (" + fmtPct(changePct) + ")" : ""}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("is-visible"));
+    setTimeout(() => {
+      toast.classList.remove("is-visible");
+      setTimeout(() => toast.remove(), 400);
+    }, TOAST_LIFETIME_MS);
+  }
+
   // ---- Ticker bar (real index/FX quotes) ----
   function renderTickerBar() {
     const indexes = window.MarketData.getIndexes();
@@ -113,20 +141,32 @@
     const el = document.createElement("div");
     el.className = "market-row";
     el.dataset.symbol = stock.symbol;
+    const watched = window.MarketData.isWatched(stock.symbol);
+    const showBadge = watched && stock.isRising;
     el.innerHTML = `
+      <button type="button" class="watch-star-btn${watched ? " is-watched" : ""}" data-symbol="${escapeHtml(stock.symbol)}" aria-label="관심종목">${watched ? "★" : "☆"}</button>
       <span class="row-symbol-cell mono">${escapeHtml(stock.symbol.replace(/\.(KS|KQ)$/, ""))}</span>
       <span class="row-name-cell">${escapeHtml(stock.name)}<span class="row-sector-cell">${escapeHtml(stock.sector)}</span></span>
-      <span class="num mono price-cell">${fmtPrice(stock.price, stock.currency)}</span>
+      <span class="num mono price-cell"><span class="price-value">${fmtPrice(stock.price, stock.currency)}</span><span class="rising-badge"${showBadge ? "" : " hidden"} title="관심종목 상승 신호">🔺</span></span>
       <span class="num mono change-cell ${dirClass(stock.changePct)}">${fmtChangeAmt(stock)}</span>
       <span class="num mono changepct-cell ${dirClass(stock.changePct)}">${fmtPct(stock.changePct)}</span>
       <span class="num mono volume-cell">${fmtVolume(stock.volume)}</span>
       <span class="num mono value-cell">${fmtCompact(stock.tradingValue, stock.currency)}</span>
       <span class="num mono range-cell">${fmtPrice(stock.weekLow52, stock.currency)} ~ ${fmtPrice(stock.weekHigh52, stock.currency)}</span>
     `;
-    el.addEventListener("click", () => window.MarketDetail?.show(stock.symbol));
+    el.addEventListener("click", (e) => {
+      if (e.target.closest(".watch-star-btn")) return;
+      window.MarketDetail?.show(stock.symbol);
+    });
+    el.querySelector(".watch-star-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      window.MarketData.toggleWatch(stock.symbol);
+    });
     return {
       el,
-      priceEl: el.querySelector(".price-cell"),
+      starEl: el.querySelector(".watch-star-btn"),
+      priceValueEl: el.querySelector(".price-value"),
+      risingBadgeEl: el.querySelector(".rising-badge"),
       changeEl: el.querySelector(".change-cell"),
       changePctEl: el.querySelector(".changepct-cell"),
       volumeEl: el.querySelector(".volume-cell"),
@@ -160,7 +200,8 @@
     viewportEl.appendChild(frag);
 
     // Only ask the network for quotes on rows that are actually on screen —
-    // this is what keeps a 190-symbol universe fast on free CORS proxies.
+    // this plus the watchlist union is what keeps a 190-symbol universe
+    // loading in roughly a single ~10s poll instead of crawling through it.
     window.MarketData.setVisibleSymbols(visibleSymbols);
   }
 
@@ -173,28 +214,113 @@
     });
   });
 
-  // ---- Debounced search (dataset is small enough that filtering itself is
-  // sub-millisecond; the debounce just batches fast keystrokes) ----
-  let searchTimer = null;
-  searchInput.addEventListener("input", () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(applyFilter, 100);
-  });
+  function baseList() {
+    return watchFilterActive ? fullList.filter((s) => window.MarketData.isWatched(s.symbol)) : fullList;
+  }
+
+  function matchesQuery(s, q) {
+    return s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.sector.toLowerCase().includes(q);
+  }
 
   function applyFilter() {
     const q = searchInput.value.trim().toLowerCase();
-    filteredList = !q
-      ? fullList
-      : fullList.filter(
-          (s) =>
-            s.symbol.toLowerCase().includes(q) ||
-            s.name.toLowerCase().includes(q) ||
-            s.sector.toLowerCase().includes(q)
-        );
+    const base = baseList();
+    filteredList = !q ? base : base.filter((s) => matchesQuery(s, q));
     resultCountEl.textContent = filteredList.length.toLocaleString("ko-KR") + "개 종목";
     scrollEl.scrollTop = 0;
     renderVisibleRows();
   }
+
+  watchFilterBtn.addEventListener("click", () => {
+    watchFilterActive = !watchFilterActive;
+    watchFilterBtn.classList.toggle("is-active", watchFilterActive);
+    watchFilterBtn.setAttribute("aria-pressed", String(watchFilterActive));
+    applyFilter();
+  });
+
+  // ---- Related-search suggestions dropdown ----
+  function renderSuggestions(query) {
+    if (!query) {
+      suggestEl.hidden = true;
+      suggestEl.innerHTML = "";
+      return;
+    }
+    const q = query.toLowerCase();
+    const starts = [];
+    const contains = [];
+    for (const s of fullList) {
+      const hay = s.symbol.toLowerCase() + " " + s.name.toLowerCase();
+      if (s.symbol.toLowerCase().startsWith(q) || s.name.toLowerCase().startsWith(q)) starts.push(s);
+      else if (hay.includes(q) || s.sector.toLowerCase().includes(q)) contains.push(s);
+      if (starts.length >= MAX_SUGGESTIONS) break;
+    }
+    const combined = [...starts, ...contains].slice(0, MAX_SUGGESTIONS);
+    if (!combined.length) {
+      suggestEl.hidden = true;
+      suggestEl.innerHTML = "";
+      return;
+    }
+    suggestEl.innerHTML = combined
+      .map(
+        (s) => `
+      <li class="market-search-suggest-item" data-symbol="${escapeHtml(s.symbol)}">
+        <span class="suggest-name">${escapeHtml(s.name)}</span>
+        <span class="suggest-meta mono">${escapeHtml(s.symbol)} · ${escapeHtml(s.sector)}</span>
+      </li>`
+      )
+      .join("");
+    suggestEl.hidden = false;
+  }
+
+  function pickSuggestion(symbol) {
+    const stock = fullList.find((s) => s.symbol === symbol);
+    if (!stock) return;
+    searchInput.value = stock.name;
+    suggestEl.hidden = true;
+    applyFilter();
+    window.MarketDetail?.show(symbol);
+  }
+
+  suggestEl.addEventListener("mousedown", (e) => {
+    // mousedown (not click) so this fires before the input's blur hides the list
+    const item = e.target.closest(".market-search-suggest-item");
+    if (!item) return;
+    pickSuggestion(item.dataset.symbol);
+  });
+
+  searchInput.addEventListener("focus", () => {
+    if (searchInput.value.trim()) renderSuggestions(searchInput.value.trim());
+  });
+
+  searchInput.addEventListener("blur", () => {
+    setTimeout(() => {
+      suggestEl.hidden = true;
+    }, 150);
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      suggestEl.hidden = true;
+    } else if (e.key === "Enter") {
+      const first = suggestEl.querySelector(".market-search-suggest-item");
+      if (!suggestEl.hidden && first) {
+        e.preventDefault();
+        pickSuggestion(first.dataset.symbol);
+      }
+    }
+  });
+
+  // Debounce batches fast keystrokes; filtering + suggestion lookup over
+  // ~190 symbols is sub-millisecond either way.
+  let searchTimer = null;
+  searchInput.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    const value = searchInput.value.trim();
+    searchTimer = setTimeout(() => {
+      applyFilter();
+      renderSuggestions(value);
+    }, 100);
+  });
 
   // ---- Live update handling: only DOM-patch rows currently rendered, and
   // only in response to a real quote that actually changed. ----
@@ -214,7 +340,8 @@
           : "";
       row.lastPrice = stock.price;
 
-      row.priceEl.textContent = fmtPrice(stock.price, stock.currency);
+      row.priceValueEl.textContent = fmtPrice(stock.price, stock.currency);
+      row.risingBadgeEl.hidden = !(stock.isRising && window.MarketData.isWatched(symbol));
       row.changeEl.textContent = fmtChangeAmt(stock);
       row.changeEl.className = "num mono change-cell " + dirClass(stock.changePct);
       row.changePctEl.textContent = fmtPct(stock.changePct);
@@ -227,10 +354,23 @@
     });
   }
 
+  function handleWatchlistChange() {
+    renderedRows.forEach((row, symbol) => {
+      const watched = window.MarketData.isWatched(symbol);
+      row.starEl.classList.toggle("is-watched", watched);
+      row.starEl.textContent = watched ? "★" : "☆";
+      const stock = window.MarketData.getStock(symbol);
+      row.risingBadgeEl.hidden = !(stock?.isRising && watched);
+    });
+    if (watchFilterActive) applyFilter();
+  }
+
   renderTickerBar();
   applyFilter();
   window.MarketData.subscribe(handleTick);
   window.MarketData.subscribeIndexes(updateTickerBar);
+  window.MarketData.subscribeWatchlist(handleWatchlistChange);
+  window.MarketData.subscribeSignals(showSignalToast);
   window.MarketData.start();
 
   document.addEventListener("visibilitychange", () => {

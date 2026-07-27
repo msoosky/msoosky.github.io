@@ -224,10 +224,13 @@ window.MarketData = (() => {
     ["KRW=X", "원/달러"],
   ];
 
-  const STALE_MS = 20000; // don't re-fetch a symbol we already have a quote for younger than this
-  const AUTO_REFRESH_MS = 25000; // re-poll currently visible symbols
-  const INDEX_REFRESH_MS = 20000;
-  const CHUNK_SIZE = 10; // keep concurrent proxy requests modest
+  const STALE_MS = 9000; // don't re-fetch a symbol we already have a quote for younger than this
+  const AUTO_REFRESH_MS = 10000; // re-poll currently visible + watchlisted symbols
+  const INDEX_REFRESH_MS = 10000;
+  const CHUNK_SIZE = 30; // typical visible-row count fits in a single batch
+  const RISING_WINDOW = 6; // real ticks kept per symbol to judge a short-term uptrend
+  const RISING_MIN_PCT = 0.001; // require at least +0.1% net move over the window
+  const WATCHLIST_KEY = "marketWatchlist:v1";
 
   function makeEntry(symbol, name, market, sector, currency) {
     return {
@@ -248,7 +251,40 @@ window.MarketData = (() => {
       weekLow52: null,
       updatedAt: 0,
       error: null,
+      recentPrices: [], // real fetched ticks only, oldest first
+      isRising: false,
     };
+  }
+
+  function loadWatchlist() {
+    try {
+      const raw = localStorage.getItem(WATCHLIST_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveWatchlist(set) {
+    try {
+      localStorage.setItem(WATCHLIST_KEY, JSON.stringify([...set]));
+    } catch {
+      // localStorage full/unavailable — watchlist just won't persist across reloads
+    }
+  }
+
+  // "Rising" means the last few real fetched prices moved up without a drop
+  // and the net change over that window clears a small noise threshold —
+  // never a fabricated projection, only what was actually observed.
+  function computeRising(points) {
+    if (points.length < 3) return false;
+    for (let i = 1; i < points.length; i++) {
+      if (points[i].price < points[i - 1].price) return false;
+    }
+    const first = points[0].price;
+    const last = points[points.length - 1].price;
+    return last > first && (last - first) / first >= RISING_MIN_PCT;
   }
 
   const registry = new Map(
@@ -264,7 +300,10 @@ window.MarketData = (() => {
 
   const subscribers = new Set();
   const indexSubscribers = new Set();
+  const watchlistSubscribers = new Set();
+  const signalSubscribers = new Set();
   const visibleSymbols = new Set();
+  const watchlist = loadWatchlist();
   const inflight = new Set();
   let autoTimer = null;
   let indexTimer = null;
@@ -290,6 +329,26 @@ window.MarketData = (() => {
     });
   }
 
+  function notifyWatchlist() {
+    watchlistSubscribers.forEach((cb) => {
+      try {
+        cb();
+      } catch {
+        // ignore
+      }
+    });
+  }
+
+  function notifySignal(entry) {
+    signalSubscribers.forEach((cb) => {
+      try {
+        cb({ symbol: entry.symbol, name: entry.name, price: entry.price, changePct: entry.changePct });
+      } catch {
+        // ignore
+      }
+    });
+  }
+
   function applyQuote(entry, quote) {
     entry.price = quote.price;
     entry.prevClose = quote.prevClose;
@@ -302,6 +361,14 @@ window.MarketData = (() => {
     entry.weekLow52 = quote.weekLow52;
     entry.tradingValue = quote.volume != null && quote.price != null ? quote.volume * quote.price : null;
     entry.error = null;
+
+    entry.recentPrices.push({ price: quote.price, t: Date.now() });
+    if (entry.recentPrices.length > RISING_WINDOW) entry.recentPrices.shift();
+    const wasRising = entry.isRising;
+    entry.isRising = computeRising(entry.recentPrices);
+    if (entry.isRising && !wasRising && watchlist.has(entry.symbol)) {
+      notifySignal(entry);
+    }
   }
 
   async function refreshSymbols(symbols) {
@@ -309,31 +376,38 @@ window.MarketData = (() => {
     if (!targets.length) return;
     targets.forEach((s) => inflight.add(s));
 
-    for (let i = 0; i < targets.length; i += CHUNK_SIZE) {
-      const chunk = targets.slice(i, i + CHUNK_SIZE);
-      let results;
-      try {
-        results = await window.StockData.fetchQuotesBatch(chunk);
-      } catch {
-        chunk.forEach((s) => inflight.delete(s));
-        continue;
-      }
-      const updated = [];
-      chunk.forEach((symbol) => {
-        inflight.delete(symbol);
-        const entry = registry.get(symbol);
-        const r = results.get(symbol);
-        if (!entry || !r) return;
-        entry.updatedAt = Date.now();
-        if (r.error || !r.quote || r.quote.price == null) {
-          entry.error = r.error || "시세 없음";
-        } else {
-          applyQuote(entry, r.quote);
+    const chunks = [];
+    for (let i = 0; i < targets.length; i += CHUNK_SIZE) chunks.push(targets.slice(i, i + CHUNK_SIZE));
+
+    // Chunks run concurrently (not one-at-a-time) — the visible+watchlist set
+    // this is called with is already small, so this is what keeps first
+    // paint of real numbers down to roughly a single proxy round trip.
+    await Promise.all(
+      chunks.map(async (chunk) => {
+        let results;
+        try {
+          results = await window.StockData.fetchQuotesBatch(chunk);
+        } catch {
+          chunk.forEach((s) => inflight.delete(s));
+          return;
         }
-        updated.push(symbol);
-      });
-      notify(updated);
-    }
+        const updated = [];
+        chunk.forEach((symbol) => {
+          inflight.delete(symbol);
+          const entry = registry.get(symbol);
+          const r = results.get(symbol);
+          if (!entry || !r) return;
+          entry.updatedAt = Date.now();
+          if (r.error || !r.quote || r.quote.price == null) {
+            entry.error = r.error || "시세 없음";
+          } else {
+            applyQuote(entry, r.quote);
+          }
+          updated.push(symbol);
+        });
+        notify(updated);
+      })
+    );
   }
 
   async function refreshIndexes() {
@@ -366,16 +440,44 @@ window.MarketData = (() => {
     if (stale.length) refreshSymbols(stale);
   }
 
+  function isWatched(symbol) {
+    return watchlist.has(symbol);
+  }
+
+  function toggleWatch(symbol) {
+    if (!registry.has(symbol)) return false;
+    let nowWatched;
+    if (watchlist.has(symbol)) {
+      watchlist.delete(symbol);
+      nowWatched = false;
+    } else {
+      watchlist.add(symbol);
+      nowWatched = true;
+      refreshSymbols([symbol]); // populate/refresh immediately so it doesn't sit blank
+    }
+    saveWatchlist(watchlist);
+    notifyWatchlist();
+    return nowWatched;
+  }
+
+  function getWatchlist() {
+    return [...watchlist].map((s) => registry.get(s)).filter(Boolean);
+  }
+
+  // Watchlisted symbols stay live even when scrolled off-screen — that's
+  // what lets the rising-signal detector actually watch them continuously.
   function start() {
     if (!autoTimer) {
       autoTimer = setInterval(() => {
-        if (visibleSymbols.size) refreshSymbols([...visibleSymbols]);
+        const targets = new Set([...visibleSymbols, ...watchlist]);
+        if (targets.size) refreshSymbols([...targets]);
       }, AUTO_REFRESH_MS);
     }
     if (!indexTimer) {
       indexTimer = setInterval(refreshIndexes, INDEX_REFRESH_MS);
     }
     refreshIndexes();
+    if (watchlist.size) refreshSymbols([...watchlist]);
   }
 
   function stop() {
@@ -407,6 +509,18 @@ window.MarketData = (() => {
     return () => indexSubscribers.delete(callback);
   }
 
+  function subscribeWatchlist(callback) {
+    watchlistSubscribers.add(callback);
+    return () => watchlistSubscribers.delete(callback);
+  }
+
+  // Fired only when a *watchlisted* symbol's real ticks flip from flat/falling
+  // to a short upward streak (see computeRising) — never a fabricated cue.
+  function subscribeSignals(callback) {
+    signalSubscribers.add(callback);
+    return () => signalSubscribers.delete(callback);
+  }
+
   return {
     start,
     stop,
@@ -417,5 +531,10 @@ window.MarketData = (() => {
     subscribeIndexes,
     setVisibleSymbols,
     refreshSymbols,
+    isWatched,
+    toggleWatch,
+    getWatchlist,
+    subscribeWatchlist,
+    subscribeSignals,
   };
 })();
